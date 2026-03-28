@@ -22,7 +22,6 @@ textarea{resize:vertical;min-height:68px}
 .btn-dark{background:#1a1a2e;color:#fff}.btn-dark:hover:not(:disabled){background:#282840}
 .btn-amber{background:#c8944a;color:#fff}.btn-amber:hover:not(:disabled){background:#b07a38}
 .btn-red{background:#e53e3e;color:#fff}.btn-red:hover:not(:disabled){background:#c53030}
-.btn-green{background:#38a169;color:#fff}.btn-green:hover:not(:disabled){background:#2f8a58}
 .btn-ghost{background:#fff;border:1.5px solid #ddd;color:#666}.btn-ghost:hover:not(:disabled){border-color:#999;color:#333}
 .btn-ghost-red{background:#fff;border:1.5px solid #f5c0c0;color:#c0392b}.btn-ghost-red:hover:not(:disabled){background:#fff5f5}
 .mono{font-family:'DM Mono',monospace}
@@ -80,19 +79,12 @@ input:checked+.sli:before{transform:translateX(20px)}
 .cancel-btn:hover{background:#fff0f0;border-color:#e53e3e}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);
   border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
-.spin-dark{border-color:rgba(0,0,0,.15);border-top-color:#c8944a}
 @keyframes sp{to{transform:rotate(360deg)}}
-/* Setup */
-.setup-box{background:#fff;border:1.5px solid #e0dbd0;border-radius:18px;padding:32px;max-width:580px;margin:0 auto}
-.step-row{display:flex;gap:12px;align-items:flex-start;padding:14px;background:#faf8f4;border:1px solid #ede8e0;border-radius:10px;margin-bottom:12px}
-.step-n{width:26px;height:26px;border-radius:50%;background:#c8944a;color:#fff;font-family:'DM Mono',monospace;
-  font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.step-row h4{font-size:14px;font-weight:600;margin-bottom:3px}
-.step-row p{font-size:13px;color:#777;line-height:1.6}
-.step-row a{color:#c8944a;text-decoration:none;font-weight:600}
-.chip{background:#1a1a2e;color:#c8944a;font-family:'DM Mono',monospace;font-size:11px;padding:2px 7px;border-radius:5px}
 .live-pill{display:inline-flex;align-items:center;gap:6px;background:#edf7f2;border:1px solid #b0dfc0;
   border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:11px;color:#1e6e44}
+/* PIN screen */
+.pin-box{background:#fff;border:1.5px solid #e0dbd0;border-radius:18px;padding:36px 32px;max-width:360px;margin:60px auto 0;text-align:center}
+.pin-input{text-align:center;font-size:28px;letter-spacing:.4em;font-family:'DM Mono',monospace;font-weight:600}
 </style>
 </head>
 <body>
@@ -115,7 +107,13 @@ input:checked+.sli:before{transform:translateX(20px)}
 </div>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// ─── HARDCODED CREDENTIALS — no setup screen for anyone ──────────────────────
+const CFG = {
+  key:   "$2a$10$BTD2e43NYyQThu0hJfJUbOj2X3Xz/n50FarlnMOAdE4c9CnrXCHuW",
+  binId: "69c7c7b0ed015c742bc4ac17"
+};
+const ADMIN_PIN = "1234"; // Kondareddy & Ramireddy use this PIN to log in as admin
+
 const IVS = [
   {id:"kk", name:"Kondareddy", full:"Gavireddy Kondareddy", ini:"GK", color:"#c8944a"},
   {id:"rr", name:"Ramireddy",  full:"Ramireddy",            ini:"RR", color:"#4a90c8"},
@@ -123,14 +121,11 @@ const IVS = [
 const MAX_FILL = 2;
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const SID  = Math.random().toString(36).slice(2,10);
-const CFG_KEY = "iv_cfg_v4";
-const JB = "https://api.jsonbin.io/v3";
+const JB   = "https://api.jsonbin.io/v3";
 
-// 30-min slots 9:00 → 19:30 (last slot ends at 20:00)
 function makeTimes(){ const t=[]; for(let h=9;h<20;h++){t.push(`${h}:00`);t.push(`${h}:30`);} return t; }
-const TIMES = makeTimes(); // 22 slots
+const TIMES = makeTimes();
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function uid()  { return Math.random().toString(36).slice(2,10) }
 function tod(n=0){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10) }
 function dayName(ds){ const[y,m,d]=ds.split("-").map(Number); return DAYS[new Date(y,m-1,d).getDay()] }
@@ -146,7 +141,7 @@ function freshSlots(){
     const date=tod(d);
     IVS.forEach(i=>TIMES.forEach(time=>sl.push({
       id:uid(),ivId:i.id,date,time,
-      status:"available", // available|filling|booked|cancelled
+      status:"available",
       name:null,email:null,phone:null,position:null,experience:null,notes:null,
       filledAt:null,cancelledAt:null,cancelledBy:null,fillingAt:null,sid:null
     })));
@@ -163,71 +158,54 @@ function expireStale(slots){
   });
 }
 
-// ─── JSONBIN API ──────────────────────────────────────────────────────────────
-let CFG = {key:"", binId:""};
-
+// ─── JSONBIN ──────────────────────────────────────────────────────────────────
 async function jRead(){
   const r=await fetch(`${JB}/b/${CFG.binId}/latest`,{headers:{"X-Master-Key":CFG.key,"X-Bin-Meta":"false"}});
   if(!r.ok) throw new Error(`Read failed (${r.status})`);
-  return await r.json(); // {slots, avail}
+  return await r.json();
 }
-
 async function jWrite(data){
   const r=await fetch(`${JB}/b/${CFG.binId}`,{method:"PUT",
     headers:{"Content-Type":"application/json","X-Master-Key":CFG.key},
     body:JSON.stringify(data)});
-  if(!r.ok) throw new Error(`Write failed (${r.status})`);
-}
-
-async function jCreate(key, data){
-  const r=await fetch(`${JB}/b`,{method:"POST",
-    headers:{"Content-Type":"application/json","X-Master-Key":key,
-      "X-Bin-Name":"interview-scheduler","X-Bin-Private":"false"},
-    body:JSON.stringify(data)});
-  if(!r.ok) throw new Error("Could not create database. Check your API key.");
-  return (await r.json()).metadata.id;
+  if(!r.ok) throw new Error(`Write failed`);
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
-  view:"loading",         // loading|setup|landing|candidate|iv-select|iv-panel|form|success
+  view:"loading",       // loading|landing|candidate|pin|iv-select|iv-panel|form|success
   slots:[], avail:{},
   ivId:null,
   activeDay:null,
   activeSlotId:null,
   successSlot:null,
   cancelTargetId:null,
-  setupLoading:false,
-  setupErr:"",
+  pinError:false,
 };
 
 let pollTimer=null;
 
-// ─── BOOT ─────────────────────────────────────────────────────────────────────
 async function boot(){
-  try{ const c=localStorage.getItem(CFG_KEY); if(c) CFG=JSON.parse(c); }catch{}
-  if(!CFG.key||!CFG.binId){ S.view="setup"; render(); return; }
-  await loadRemote();
-  startPoll();
-}
-
-async function loadRemote(){
+  render();
   try{
     const data=await jRead();
     S.slots=expireStale(data.slots||freshSlots());
     S.avail=data.avail||{};
-    if(S.view==="loading") S.view="landing";
+    // First time — create fresh slots if bin is empty
+    if(!data.slots){ await jWrite({slots:S.slots,avail:{}}); }
   }catch(e){
-    if(S.view==="loading"){ CFG={key:"",binId:""}; localStorage.removeItem(CFG_KEY); S.view="setup"; }
+    S.slots=freshSlots(); S.avail={};
   }
-  S.activeDay=S.activeDay||tod(0);
+  S.activeDay=tod(0);
+  S.view="landing";
   render();
+  startPoll();
 }
 
 function startPoll(){
   clearInterval(pollTimer);
   pollTimer=setInterval(async()=>{
-    if(["loading","setup","form"].includes(S.view)) return;
+    if(["loading","form","pin"].includes(S.view)) return;
     try{
       const data=await jRead();
       S.slots=expireStale(data.slots||[]);
@@ -235,47 +213,6 @@ function startPoll(){
       render();
     }catch{}
   },6000);
-}
-
-async function writeData(slots,avail){
-  S.slots=slots; S.avail=avail; render();
-  await jWrite({slots,avail});
-}
-
-// ─── SETUP ────────────────────────────────────────────────────────────────────
-async function doConnect(){
-  const key=(document.getElementById("sk")?.value||"").trim();
-  const bin=(document.getElementById("sb")?.value||"").trim();
-  if(!key){ toast("Please enter your JSONBin Master Key."); return; }
-  S.setupLoading=true; S.setupErr=""; render();
-  try{
-    CFG.key=key;
-    if(bin){
-      CFG.binId=bin;
-      const data=await jRead();
-      S.slots=expireStale(data.slots||freshSlots());
-      S.avail=data.avail||{};
-    } else {
-      const initData={slots:freshSlots(),avail:{}};
-      CFG.binId=await jCreate(key,initData);
-      S.slots=initData.slots; S.avail={};
-    }
-    CFG.key=key;
-    localStorage.setItem(CFG_KEY,JSON.stringify(CFG));
-    S.view="binid-reveal"; S.setupLoading=false; S.activeDay=tod(0);
-    render(); startPoll();
-  }catch(e){
-    S.setupErr=e.message||"Connection failed. Check your API key.";
-    S.setupLoading=false; CFG={key:"",binId:""}; render();
-  }
-}
-
-function doDisconnect(){
-  if(!confirm("Disconnect from the live database?")) return;
-  clearInterval(pollTimer); CFG={key:"",binId:""};
-  localStorage.removeItem(CFG_KEY);
-  S={...S,view:"setup",slots:[],avail:{},ivId:null,setupLoading:false,setupErr:""};
-  render();
 }
 
 // ─── CANDIDATE ACTIONS ────────────────────────────────────────────────────────
@@ -320,6 +257,13 @@ async function submitForm(){
   S.activeSlotId=null; S.view="success"; render();
 }
 
+// ─── ADMIN PIN ────────────────────────────────────────────────────────────────
+function checkPin(){
+  const pin=document.getElementById("pin-input")?.value?.trim();
+  if(pin===ADMIN_PIN){ S.pinError=false; S.view="iv-select"; render(); }
+  else{ S.pinError=true; render(); }
+}
+
 // ─── ADMIN ACTIONS ────────────────────────────────────────────────────────────
 function toggleAvail(ivId,date,val){
   if(!S.avail[ivId]) S.avail[ivId]={};
@@ -327,7 +271,6 @@ function toggleAvail(ivId,date,val){
   jWrite({slots:S.slots,avail:S.avail}).catch(()=>toast("⚠️ Network error saving availability."));
   render();
 }
-
 function getAvail(ivId,date){
   if(!S.avail[ivId]) return true;
   return S.avail[ivId][date]!==undefined?S.avail[ivId][date]:true;
@@ -346,7 +289,6 @@ function openCancelModal(slotId){
     </div>`;
   document.getElementById("cancel-modal").style.display="flex";
 }
-
 function closeModal(){ document.getElementById("cancel-modal").style.display="none"; S.cancelTargetId=null; }
 
 async function confirmCancel(){
@@ -359,7 +301,7 @@ async function confirmCancel(){
     ?{...s,status:"cancelled",cancelledAt:new Date().toISOString(),cancelledBy:adminName,sid:null}:s);
   try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Save failed."); closeModal(); return; }
   S.slots=upd; closeModal();
-  toast("✅ Interview cancelled. Slot is now free again.");
+  toast("✅ Interview cancelled. Slot is now free.");
   render();
 }
 
@@ -369,19 +311,18 @@ async function restoreSlot(slotId){
     ?{...s,status:"available",name:null,email:null,phone:null,position:null,experience:null,
         notes:null,filledAt:null,cancelledAt:null,cancelledBy:null}:s);
   try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Save failed."); return; }
-  S.slots=upd; toast("✅ Slot restored and available."); render();
+  S.slots=upd; toast("✅ Slot restored."); render();
 }
 
 async function resetAll(){
-  if(!confirm("Reset ALL slots and registrations? This cannot be undone.")) return;
+  if(!confirm("Reset ALL slots and registrations? Cannot be undone.")) return;
   const fresh={slots:freshSlots(),avail:{}};
   try{ await jWrite(fresh); S.slots=fresh.slots; S.avail=fresh.avail; toast("✅ Schedule reset."); render(); }
   catch{ toast("⚠️ Network error."); }
 }
 
-// release filling on close
 window.addEventListener("beforeunload",()=>{
-  if(!S.activeSlotId||!CFG.binId) return;
+  if(!S.activeSlotId) return;
   try{
     const upd=S.slots.map(s=>s.id===S.activeSlotId&&s.sid===SID?{...s,status:"available",fillingAt:null,sid:null}:s);
     navigator.sendBeacon&&navigator.sendBeacon(`${JB}/b/${CFG.binId}`,new Blob([JSON.stringify({slots:upd,avail:S.avail})],{type:"application/json"}));
@@ -408,161 +349,27 @@ function render(){
         <p class="mono" style="font-size:10px;color:#aaa;letter-spacing:.13em;text-transform:uppercase;margin-top:5px">${sub}</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${CFG.binId?`<span class="live-pill">🟢 Live Sync</span>`:""}
+        <span class="live-pill">🟢 Live</span>
         ${back?`<button class="btn btn-ghost" onclick="${back}" style="font-size:12px;padding:8px 14px">🏠 Home</button>`:""}
       </div>
     </div>`;
 
-  // ── LOADING ────────────────────────────────────────────────────────────────
+  // ── LOADING ──────────────────────────────────────────────────────────────
   if(view==="loading"){
-    app.innerHTML=`<div style="text-align:center;padding:80px 20px;color:#aaa">
-      <div style="font-size:32px;margin-bottom:16px">⏳</div>
-      <div class="mono" style="font-size:12px;text-transform:uppercase;letter-spacing:.12em">Connecting to live database…</div>
-    </div>`;
-    return;
-  }
-
-  // ── SETUP ──────────────────────────────────────────────────────────────────
-  if(view==="setup"){
-    app.innerHTML=`<div class="view">
-      <div style="text-align:center;margin-bottom:28px">
-        <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.8rem,5vw,2.6rem);color:#1a1a2e;letter-spacing:-.02em">
-          Interview <em style="font-style:italic;color:#c8944a">Scheduler</em>
-        </h1>
-        <p class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-top:6px">One-time live sync setup</p>
-      </div>
-      <div class="setup-box">
-        <h2 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:6px">Connect Live Database</h2>
-        <p style="font-size:13px;color:#888;margin-bottom:20px;line-height:1.6">
-          Uses <strong>JSONBin.io</strong> (free) — every user sees live updates from the same URL in real time.
-        </p>
-
-        <div class="step-row">
-          <div class="step-n">1</div>
-          <div>
-            <h4>Create a free JSONBin account</h4>
-            <p>Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> → click <strong>Sign Up Free</strong> → verify your email and log in.</p>
-          </div>
-        </div>
-        <div class="step-row">
-          <div class="step-n">2</div>
-          <div>
-            <h4>Copy your Master Key</h4>
-            <p>Click your profile icon (top right) → <strong>API Keys</strong> → copy the <strong>Master Key</strong> that starts with <span class="chip">$2a$10$…</span></p>
-          </div>
-        </div>
-        <div class="step-row">
-          <div class="step-n">3</div>
-          <div>
-            <h4>Paste below and click Connect</h4>
-            <p>Leave <strong>Bin ID</strong> empty the first time — the database is created automatically. Save the Bin ID shown after connecting so others can reconnect to the same data.</p>
-          </div>
-        </div>
-
-        <div style="margin-top:20px">
-          <div style="margin-bottom:12px">
-            <span class="lbl">JSONBin Master Key *</span>
-            <input id="sk" type="password" placeholder="$2a$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"/>
-          </div>
-          <div style="margin-bottom:18px">
-            <span class="lbl">Bin ID (leave empty on first use)</span>
-            <input id="sb" placeholder="e.g. 6630abc123def456…  — paste to reconnect existing data"/>
-            <p class="mono" style="font-size:10px;color:#bbb;margin-top:5px">
-              Share the Bin ID with Kondareddy &amp; Ramireddy so all admins connect to the same live database.
-            </p>
-          </div>
-
-          ${S.setupErr?`<div style="background:#fff0f0;border:1px solid #f5c0c0;border-radius:8px;
-            padding:10px 14px;font-size:13px;color:#c0392b;margin-bottom:14px">❌ ${esc(S.setupErr)}</div>`:""}
-
-          <button class="btn btn-amber" onclick="doConnect()" style="width:100%;padding:13px;font-size:14px"
-            ${S.setupLoading?"disabled":""}>
-            ${S.setupLoading?'<span class="spin"></span>Connecting…':"⚡ Connect &amp; Launch App"}
-          </button>
-        </div>
-
-        <div style="margin-top:22px;padding-top:18px;border-top:1px solid #ede8e0">
-          <p style="font-size:12px;color:#bbb;line-height:1.8">
-            <strong style="color:#888">After setup:</strong> Host this HTML file on
-            <a href="https://app.netlify.com/drop" target="_blank" style="color:#c8944a;font-weight:600">Netlify Drop</a>
-            (drag &amp; drop the file) → share the URL with candidates and admins.
-            All bookings, cancellations and availability sync live across every browser.
-          </p>
-        </div>
+    app.innerHTML=`<div style="text-align:center;padding:100px 20px">
+      <div style="font-size:36px;margin-bottom:16px">📅</div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px">
+        Interview <em style="color:#c8944a;font-style:italic">Scheduler</em>
+      </h1>
+      <div class="mono" style="font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:.12em;margin-top:16px">
+        <span class="spin" style="border-color:rgba(0,0,0,.15);border-top-color:#c8944a"></span>
+        Connecting…
       </div>
     </div>`;
     return;
   }
 
-  // ── BIN ID REVEAL (shown once after first connect) ─────────────────────────
-  if(view==="binid-reveal"){
-    app.innerHTML=`<div class="view">
-      <div style="text-align:center;margin-bottom:28px">
-        <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.8rem,5vw,2.6rem);color:#1a1a2e;letter-spacing:-.02em">
-          Interview <em style="font-style:italic;color:#c8944a">Scheduler</em>
-        </h1>
-      </div>
-      <div style="max-width:560px;margin:0 auto">
-
-        <!-- Success banner -->
-        <div style="background:#edf7f2;border:1.5px solid #b0dfc0;border-radius:14px;padding:20px 24px;margin-bottom:24px;text-align:center">
-          <div style="font-size:36px;margin-bottom:8px">✅</div>
-          <div style="font-weight:700;font-size:16px;color:#1e6e44;margin-bottom:4px">Live database connected!</div>
-          <div style="font-size:13px;color:#2a7a50">Your schedule is now live and syncing across all devices.</div>
-        </div>
-
-        <!-- Bin ID box — the important part -->
-        <div style="background:#fff;border:2px solid #c8944a;border-radius:14px;padding:22px 24px;margin-bottom:20px">
-          <div class="mono" style="font-size:10px;color:#c8944a;text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px">
-            ⚠️ Save This — Your Database Bin ID
-          </div>
-          <div style="background:#faf8f4;border:1.5px solid #e0dbd0;border-radius:9px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px">
-            <code style="font-family:'DM Mono',monospace;font-size:14px;color:#1a1a2e;word-break:break-all;flex:1;font-weight:600">${CFG.binId}</code>
-            <button onclick="navigator.clipboard.writeText('${CFG.binId}').then(()=>toast('✅ Bin ID copied!'))"
-              style="padding:7px 14px;background:#c8944a;color:#fff;border:none;border-radius:7px;
-              font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">
-              Copy
-            </button>
-          </div>
-          <p style="font-size:13px;color:#888;line-height:1.7;margin:0">
-            <strong style="color:#555">Share this Bin ID</strong> with Kondareddy and Ramireddy so they can connect to the same live database.<br/>
-            When they open the app and see the setup screen, they paste <strong>both</strong> the Master Key and this Bin ID.
-          </p>
-        </div>
-
-        <!-- What to do next -->
-        <div style="background:#fff;border:1px solid #e8e2d8;border-radius:12px;padding:18px 22px;margin-bottom:20px">
-          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:14px">Next Steps</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            ${[
-              ["1","Host on Netlify","Go to app.netlify.com/drop → drag and drop the interview-scheduler.html file → copy the URL you get."],
-              ["2","Share the URL","Send the Netlify URL to all candidates and both admins (Kondareddy & Ramireddy)."],
-              ["3","Admins reconnect","Each admin opens the URL, sees the setup screen, enters their Master Key + this Bin ID to connect to the same live data."],
-            ].map(([n,t,d])=>`
-              <div style="display:flex;gap:12px;align-items:flex-start">
-                <div style="width:24px;height:24px;border-radius:50%;background:#1a1a2e;color:#fff;
-                  font-family:'DM Mono',monospace;font-size:11px;display:flex;align-items:center;
-                  justify-content:center;flex-shrink:0;margin-top:1px">${n}</div>
-                <div>
-                  <div style="font-weight:600;font-size:13px;margin-bottom:2px">${t}</div>
-                  <div style="font-size:12px;color:#888;line-height:1.6">${d}</div>
-                </div>
-              </div>`).join("")}
-          </div>
-        </div>
-
-        <button class="btn btn-amber" onclick="S.view='landing';render()" style="width:100%;padding:13px;font-size:15px">
-          🚀 Go to the App →
-        </button>
-        <p class="mono" style="text-align:center;font-size:10px;color:#ccc;margin-top:10px">
-          The Bin ID is also saved in your browser — this screen won't show again.
-        </p>
-      </div>
-    </div>`;
-    return;
-  }
-
-  // ── LANDING ────────────────────────────────────────────────────────────────
+  // ── LANDING ───────────────────────────────────────────────────────────────
   if(view==="landing"){
     const todayStr=tod(0);
     const todayBooked=bookedAll.filter(s=>s.date===todayStr);
@@ -579,10 +386,10 @@ function render(){
             ${cancelledAll.length>0?`<span class="badge bg-cancelled">${cancelledAll.length} cancelled</span>`:""}
           </div>
         </button>
-        <button class="lcard" onclick="S.view='iv-select';render()">
+        <button class="lcard" onclick="S.view='pin';S.pinError=false;render()">
           <div style="font-size:36px;margin-bottom:12px">🔐</div>
           <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:6px">I'm an Admin</div>
-          <div style="font-size:13px;color:#888;line-height:1.6">View daily schedules, cancel interviews, set availability — admin access only.</div>
+          <div style="font-size:13px;color:#888;line-height:1.6">View schedules, cancel interviews and manage availability. Enter PIN to access.</div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
             <span class="badge bg-a">Kondareddy</span>
             <span class="badge bg-b">Ramireddy</span>
@@ -605,36 +412,39 @@ function render(){
           :`<tr><td colspan="4" style="text-align:center;color:#ccc;padding:24px;font-size:13px">No interviews scheduled for today yet.</td></tr>`}
         </tbody></table>
       </div>
-      <!-- Bin ID always visible -->
-      <div style="background:#fff;border:1.5px solid #e0dbd0;border-radius:12px;padding:14px 18px;margin-top:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div style="flex:1;min-width:0">
-          <div class="mono" style="font-size:10px;color:#c8944a;text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px">🔑 Your Database Bin ID (share with admins)</div>
-          <div style="font-family:'DM Mono',monospace;font-size:13px;color:#1a1a2e;font-weight:600;word-break:break-all;background:#faf8f4;border:1px solid #ede8e0;border-radius:7px;padding:8px 12px">${CFG.binId||"Not connected"}</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button onclick="navigator.clipboard.writeText('${CFG.binId}').then(()=>toast('✅ Bin ID copied to clipboard!'))"
-            style="padding:8px 14px;background:#c8944a;color:#fff;border:none;border-radius:8px;
-            font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer">📋 Copy</button>
-          <button class="btn btn-ghost" onclick="doDisconnect()" style="font-size:11px;padding:8px 13px">⚙ Change</button>
-        </div>
-      </div>
     </div>`;
     return;
   }
 
-  // ── ADMIN SELECT ───────────────────────────────────────────────────────────
+  // ── ADMIN PIN SCREEN ──────────────────────────────────────────────────────
+  if(view==="pin"){
+    app.innerHTML=`<div class="view">
+      ${hdr("Admin access","goLanding()")}
+      <div class="pin-box">
+        <div style="font-size:40px;margin-bottom:16px">🔐</div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:6px">Admin Login</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:24px;line-height:1.6">
+          Enter the 4-digit PIN to access the admin panel.
+        </p>
+        <input class="pin-input" id="pin-input" type="password" maxlength="4"
+          placeholder="• • • •" style="margin-bottom:12px;font-size:28px;letter-spacing:.4em;text-align:center"
+          onkeydown="if(event.key==='Enter')checkPin()"/>
+        ${S.pinError?`<div style="color:#c0392b;font-size:13px;margin-bottom:12px;font-family:'DM Mono',monospace">❌ Wrong PIN. Try again.</div>`:""}
+        <button class="btn btn-amber" onclick="checkPin()" style="width:100%;padding:13px;font-size:14px;margin-top:4px">
+          Enter Admin Panel →
+        </button>
+        <p class="mono" style="font-size:10px;color:#ccc;margin-top:14px">Only Kondareddy &amp; Ramireddy have the PIN</p>
+      </div>
+    </div>`;
+    setTimeout(()=>document.getElementById("pin-input")?.focus(),100);
+    return;
+  }
+
+  // ── ADMIN SELECT ──────────────────────────────────────────────────────────
   if(view==="iv-select"){
     app.innerHTML=`<div class="view">
       ${hdr("Admin portal","goLanding()")}
       <div style="max-width:480px;margin:0 auto">
-        <div style="background:#fef8ed;border:1px solid #e8c878;border-radius:10px;
-          padding:12px 16px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start">
-          <span style="font-size:18px;flex-shrink:0">🔐</span>
-          <div style="font-size:13px;color:#8a5a10;line-height:1.6">
-            <strong>Admin Access Only.</strong> Select your name to view your schedule, 
-            manage availability, and cancel interviews.
-          </div>
-        </div>
         <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:14px">Select your name</div>
         <div style="display:flex;flex-direction:column;gap:12px">
           ${IVS.map(i=>{
@@ -653,7 +463,7 @@ function render(){
                 <div style="font-size:12px;color:#aaa;margin-top:2px">Admin · Interviewer</div>
                 <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
                   <span class="badge bg-b">${todayB} today</span>
-                  <span class="badge bg-g">${myBooked} total booked</span>
+                  <span class="badge bg-g">${myBooked} total</span>
                   ${myCancelled>0?`<span class="badge bg-cancelled">${myCancelled} cancelled</span>`:""}
                 </div>
               </div>
@@ -665,7 +475,7 @@ function render(){
     return;
   }
 
-  // ── ADMIN PANEL ────────────────────────────────────────────────────────────
+  // ── ADMIN PANEL ───────────────────────────────────────────────────────────
   if(view==="iv-panel"){
     const i=iv(S.ivId);
     const mySlots=slots.filter(s=>s.ivId===i.id);
@@ -698,7 +508,7 @@ function render(){
         <div style="display:flex;align-items:center;gap:10px;width:100%">
           <div style="width:5px;height:40px;border-radius:3px;background:${i.color};flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(slot.name)}</div>
+            <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(slot.name)}</div>
             <div class="mono" style="font-size:11px;color:#aaa;margin-top:1px">${esc(slot.email)}${slot.phone?` · ${esc(slot.phone)}`:""}</div>
           </div>
           ${slot.position?`<span class="badge bg-m" style="font-size:9px;flex-shrink:0">${esc(slot.position)}</span>`:""}
@@ -708,7 +518,7 @@ function render(){
         <div style="display:flex;align-items:center;gap:10px;width:100%;opacity:.75">
           <div style="width:5px;height:40px;border-radius:3px;background:#f5c0c0;flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:12px;color:#c0392b;font-weight:600;text-decoration:line-through;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(slot.name)}</div>
+            <div style="font-size:12px;color:#c0392b;font-weight:600;text-decoration:line-through;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(slot.name)}</div>
             <div class="mono" style="font-size:10px;color:#aaa">Cancelled by ${esc(slot.cancelledBy||"Admin")} · ${fmtAt(slot.cancelledAt)}</div>
           </div>
           <span class="badge bg-cancelled" style="font-size:9px;flex-shrink:0">Cancelled</span>
@@ -748,9 +558,7 @@ function render(){
     </tr>`).join("");
 
     app.innerHTML=`<div class="view">
-      ${hdr("Admin panel — "+i.full,"goLanding()")}
-
-      <!-- Profile bar -->
+      ${hdr("Admin — "+i.full,"goLanding()")}
       <div style="background:#fff;border:1px solid #e8e2d8;border-radius:14px;padding:18px 22px;
         display:flex;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap">
         <div style="width:52px;height:52px;border-radius:50%;background:${i.color};
@@ -768,20 +576,14 @@ function render(){
             <div class="stat-box"><div class="stat-num" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join("")}
         </div>
       </div>
-
-      <!-- Day tabs -->
-      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px">
-        ${dayTabs}
-      </div>
-
-      <!-- Day header + availability toggle -->
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px">${dayTabs}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700">${dayName(activeDate)}</div>
           <div class="mono" style="font-size:11px;color:#aaa;margin-top:2px">${fmtDate(activeDate)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          ${dayBooked.length>0?`<span class="badge bg-g">${dayBooked.length} interview${dayBooked.length!==1?"s":""} booked</span>`:""}
+          ${dayBooked.length>0?`<span class="badge bg-g">${dayBooked.length} booked</span>`:""}
           ${dayCancelled.length>0?`<span class="badge bg-r">${dayCancelled.length} cancelled</span>`:""}
           <span class="badge ${dayAvl?"bg-g":"bg-r"}">${dayAvl?"✓ Available":"✗ Unavailable"}</span>
           <div style="display:flex;align-items:center;gap:8px">
@@ -793,8 +595,6 @@ function render(){
           </div>
         </div>
       </div>
-
-      <!-- Timeline -->
       <div class="card" style="margin-bottom:4px">
         <div style="padding:10px 16px;background:#faf8f4;border-bottom:1px solid #ede8e0;
           display:flex;align-items:center;justify-content:space-between">
@@ -805,39 +605,36 @@ function render(){
         </div>
         ${tlRows}
       </div>
-
       ${dayBooked.length>0?`
         <div style="margin-top:22px">
           <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
-            📋 Booked Interviews — ${dayName(activeDate)} (${dayBooked.length})
+            📋 Booked — ${dayName(activeDate)} (${dayBooked.length})
           </div>
           <div class="card">
-            <table><thead><tr><th>Time</th><th>Candidate</th><th>Position</th><th>Experience</th><th>Contact</th><th>Notes</th><th style="text-align:center">Action</th></tr></thead>
+            <table><thead><tr><th>Time</th><th>Candidate</th><th>Position</th><th>Experience</th><th>Contact</th><th>Notes</th><th>Action</th></tr></thead>
             <tbody>${detailRows}</tbody></table>
           </div>
         </div>`:""}
-
       ${dayCancelled.length>0?`
         <div style="margin-top:20px">
           <div class="mono" style="font-size:10px;color:#c0392b;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
-            ✗ Cancelled Interviews — ${dayName(activeDate)} (${dayCancelled.length})
+            ✗ Cancelled — ${dayName(activeDate)} (${dayCancelled.length})
           </div>
           <div class="card">
-            <table><thead><tr><th>Time</th><th>Candidate</th><th>Email</th><th>Cancelled At</th><th>Cancelled By</th><th style="text-align:center">Restore</th></tr></thead>
+            <table><thead><tr><th>Time</th><th>Candidate</th><th>Email</th><th>Cancelled At</th><th>By</th><th>Restore</th></tr></thead>
             <tbody>${cancelRows}</tbody></table>
           </div>
         </div>`:""}
-
       <div style="margin-top:22px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="S.view='iv-select';render()" style="font-size:12px">← Switch Admin</button>
+        <button class="btn btn-ghost" onclick="S.view='iv-select';render()" style="font-size:12px">← Switch</button>
         <button class="btn btn-ghost" onclick="goLanding()" style="font-size:12px">🏠 Home</button>
-        <button class="btn btn-ghost-red" onclick="resetAll()" style="font-size:12px;margin-left:auto">↺ Reset All Slots</button>
+        <button class="btn btn-ghost-red" onclick="resetAll()" style="font-size:12px;margin-left:auto">↺ Reset All</button>
       </div>
     </div>`;
     return;
   }
 
-  // ── CANDIDATE BOARD ────────────────────────────────────────────────────────
+  // ── CANDIDATE BOARD ───────────────────────────────────────────────────────
   if(view==="candidate"){
     const todayStr=tod(0);
     const ivSummary=IVS.map(i=>{
@@ -853,7 +650,7 @@ function render(){
           <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">
             <span class="badge ${avl?"bg-g":"bg-r"}" style="font-size:9px">${avl?"✓ Available today":"✗ Unavailable today"}</span>
             <span class="badge bg-b" style="font-size:9px">${booked} booked</span>
-            <span class="badge bg-a" style="font-size:9px">${open} open slots</span>
+            <span class="badge bg-a" style="font-size:9px">${open} open</span>
           </div>
         </div>
       </div>`;}).join("");
@@ -920,7 +717,7 @@ function render(){
             font-family:'DM Mono',monospace;font-size:11px;color:${af>0?"#8a5a10":"#1e6e44"}">
             <span style="width:6px;height:6px;border-radius:50%;background:${af>0?"#e8c878":"#6ec89a"};display:inline-block"></span>
             ${af}/${MAX_FILL} filling now</span>
-          <button class="btn btn-ghost" onclick="loadRemote()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>
+          <button class="btn btn-ghost" onclick="loadData()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>
         </div>
       </div>
       ${sections}
@@ -950,12 +747,12 @@ function render(){
     return;
   }
 
-  // ── FORM ───────────────────────────────────────────────────────────────────
+  // ── FORM ─────────────────────────────────────────────────────────────────
   if(view==="form"){
     const slot=slots.find(s=>s.id===S.activeSlotId);
     const i=slot?iv(slot.ivId):IVS[0];
     app.innerHTML=`<div class="view">
-      ${hdr("Register for interview","goLanding()")}
+      ${hdr("Register for interview","cancelForm()")}
       <div style="max-width:540px;margin:0 auto">
         <div style="background:#fff;border:2px solid ${i.color}38;border-radius:13px;padding:18px 22px;margin-bottom:22px">
           <span class="lbl" style="color:${i.color}">Your Confirmed Slot</span>
@@ -991,7 +788,7 @@ function render(){
     return;
   }
 
-  // ── SUCCESS ────────────────────────────────────────────────────────────────
+  // ── SUCCESS ───────────────────────────────────────────────────────────────
   if(view==="success"){
     const s=S.successSlot; const i=s?iv(s.ivId):IVS[0];
     app.innerHTML=`<div class="view" style="text-align:center;padding:40px 20px;max-width:460px;margin:0 auto">
@@ -1020,6 +817,15 @@ function render(){
 
 function goLanding(){ S.view="landing"; S.activeSlotId=null; render(); }
 function setDay(d){ S.activeDay=d; render(); }
+
+async function loadData(){
+  try{
+    const data=await jRead();
+    S.slots=expireStale(data.slots||[]);
+    S.avail=data.avail||{};
+    render(); toast("✅ Refreshed.");
+  }catch{ toast("⚠️ Network error."); }
+}
 
 let toastT;
 function toast(msg,d=3500){
