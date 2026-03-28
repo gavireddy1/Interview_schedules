@@ -82,9 +82,8 @@ input:checked+.sli:before{transform:translateX(20px)}
 @keyframes sp{to{transform:rotate(360deg)}}
 .live-pill{display:inline-flex;align-items:center;gap:6px;background:#edf7f2;border:1px solid #b0dfc0;
   border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:11px;color:#1e6e44}
-/* PIN screen */
-.pin-box{background:#fff;border:1.5px solid #e0dbd0;border-radius:18px;padding:36px 32px;max-width:360px;margin:60px auto 0;text-align:center}
-.pin-input{text-align:center;font-size:28px;letter-spacing:.4em;font-family:'DM Mono',monospace;font-weight:600}
+.pin-box{background:#fff;border:1.5px solid #e0dbd0;border-radius:18px;padding:36px 32px;
+  max-width:360px;margin:60px auto 0;text-align:center}
 </style>
 </head>
 <body>
@@ -92,13 +91,13 @@ input:checked+.sli:before{transform:translateX(20px)}
 <div class="wrap" id="app"></div>
 <div class="toast" id="toast"></div>
 
-<!-- Cancel Modal -->
 <div class="modal-bg" id="cancel-modal" style="display:none">
   <div class="modal">
     <div style="font-size:32px;text-align:center;margin-bottom:12px">⚠️</div>
     <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;text-align:center;margin-bottom:8px">Cancel Interview?</h3>
     <p style="font-size:13px;color:#888;text-align:center;line-height:1.6;margin-bottom:8px">You are about to cancel the interview for:</p>
-    <div id="modal-info" style="background:#fff5f5;border:1px solid #f5c0c0;border-radius:10px;padding:14px 18px;margin-bottom:20px;text-align:center"></div>
+    <div id="modal-info" style="background:#fff5f5;border:1px solid #f5c0c0;border-radius:10px;
+      padding:14px 18px;margin-bottom:20px;text-align:center"></div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Keep It</button>
       <button class="btn btn-red" style="flex:1" id="confirm-cancel-btn" onclick="confirmCancel()">Yes, Cancel Interview</button>
@@ -107,12 +106,12 @@ input:checked+.sli:before{transform:translateX(20px)}
 </div>
 
 <script>
-// ─── HARDCODED CREDENTIALS — no setup screen for anyone ──────────────────────
+// ─── CREDENTIALS ──────────────────────────────────────────────────────────────
 const CFG = {
   key:   "$2a$10$BTD2e43NYyQThu0hJfJUbOj2X3Xz/n50FarlnMOAdE4c9CnrXCHuW",
   binId: "69c7c7b0ed015c742bc4ac17"
 };
-const ADMIN_PIN = "1234"; // Kondareddy & Ramireddy use this PIN to log in as admin
+const ADMIN_PIN = "1234";
 
 const IVS = [
   {id:"kk", name:"Kondareddy", full:"Gavireddy Kondareddy", ini:"GK", color:"#c8944a"},
@@ -122,12 +121,17 @@ const MAX_FILL = 2;
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const SID  = Math.random().toString(36).slice(2,10);
 const JB   = "https://api.jsonbin.io/v3";
+const WINDOW_DAYS = 7; // always show today + next 6 days
 
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function makeTimes(){ const t=[]; for(let h=9;h<20;h++){t.push(`${h}:00`);t.push(`${h}:30`);} return t; }
 const TIMES = makeTimes();
 
 function uid()  { return Math.random().toString(36).slice(2,10) }
-function tod(n=0){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10) }
+function tod(n=0){
+  const d=new Date(); d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
 function dayName(ds){ const[y,m,d]=ds.split("-").map(Number); return DAYS[new Date(y,m-1,d).getDay()] }
 function fmtDate(ds){ const[y,m,d]=ds.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) }
 function fmtTime(t){ const[h,m]=t.split(":").map(Number); return `${h>12?h-12:h||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}` }
@@ -135,18 +139,59 @@ function fmtAt(iso){ return iso?new Date(iso).toLocaleString("en-GB",{day:"2-dig
 function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
 function iv(id){ return IVS.find(i=>i.id===id)||IVS[0] }
 
-function freshSlots(){
+// Get the required date window: today → today+6
+function getRequiredDates(){
+  const dates=[];
+  for(let i=0;i<WINDOW_DAYS;i++) dates.push(tod(i));
+  return dates;
+}
+
+// Generate fresh slots for a single date
+function slotsForDate(date){
   const sl=[];
-  for(let d=0;d<7;d++){
-    const date=tod(d);
-    IVS.forEach(i=>TIMES.forEach(time=>sl.push({
-      id:uid(),ivId:i.id,date,time,
-      status:"available",
-      name:null,email:null,phone:null,position:null,experience:null,notes:null,
-      filledAt:null,cancelledAt:null,cancelledBy:null,fillingAt:null,sid:null
-    })));
-  }
+  IVS.forEach(i=>TIMES.forEach(time=>sl.push({
+    id:uid(), ivId:i.id, date, time,
+    status:"available",
+    name:null, email:null, phone:null, position:null, experience:null, notes:null,
+    filledAt:null, cancelledAt:null, cancelledBy:null, fillingAt:null, sid:null
+  })));
   return sl;
+}
+
+// ─── ROLLING WINDOW SYNC ──────────────────────────────────────────────────────
+// Ensures slots always cover today → today+6
+// - Removes slots for dates BEFORE today (keeps booked ones as history)
+// - Adds fresh slots for any future dates that are missing
+function syncRollingWindow(slots){
+  const required = getRequiredDates();
+  const todayStr = tod(0);
+  let changed = false;
+
+  // Find which required dates already have slots
+  const existingDates = new Set(slots.map(s=>s.date));
+
+  // Add slots for any missing future dates
+  for(const date of required){
+    if(!existingDates.has(date)){
+      const newSlots = slotsForDate(date);
+      slots = [...slots, ...newSlots];
+      changed = true;
+      console.log(`Auto-added slots for new date: ${date}`);
+    }
+  }
+
+  // Remove AVAILABLE slots for past dates (keep booked/cancelled for records)
+  const filteredSlots = slots.filter(s=>{
+    if(s.date >= todayStr) return true; // keep all future/today slots
+    // For past dates: keep booked and cancelled for history, remove available
+    return s.status === "booked" || s.status === "cancelled";
+  });
+  if(filteredSlots.length !== slots.length){
+    slots = filteredSlots;
+    changed = true;
+  }
+
+  return { slots, changed };
 }
 
 function expireStale(slots){
@@ -160,7 +205,8 @@ function expireStale(slots){
 
 // ─── JSONBIN ──────────────────────────────────────────────────────────────────
 async function jRead(){
-  const r=await fetch(`${JB}/b/${CFG.binId}/latest`,{headers:{"X-Master-Key":CFG.key,"X-Bin-Meta":"false"}});
+  const r=await fetch(`${JB}/b/${CFG.binId}/latest`,{
+    headers:{"X-Master-Key":CFG.key,"X-Bin-Meta":"false"}});
   if(!r.ok) throw new Error(`Read failed (${r.status})`);
   return await r.json();
 }
@@ -168,63 +214,82 @@ async function jWrite(data){
   const r=await fetch(`${JB}/b/${CFG.binId}`,{method:"PUT",
     headers:{"Content-Type":"application/json","X-Master-Key":CFG.key},
     body:JSON.stringify(data)});
-  if(!r.ok) throw new Error(`Write failed`);
+  if(!r.ok) throw new Error("Write failed");
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let S={
-  view:"loading",       // loading|landing|candidate|pin|iv-select|iv-panel|form|success
+  view:"loading",
   slots:[], avail:{},
-  ivId:null,
-  activeDay:null,
-  activeSlotId:null,
-  successSlot:null,
-  cancelTargetId:null,
-  pinError:false,
+  ivId:null, activeDay:null,
+  activeSlotId:null, successSlot:null,
+  cancelTargetId:null, pinError:false,
 };
-
 let pollTimer=null;
 
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
 async function boot(){
   render();
   try{
-    const data=await jRead();
-    S.slots=expireStale(data.slots||freshSlots());
-    S.avail=data.avail||{};
-    // First time — create fresh slots if bin is empty
-    if(!data.slots){ await jWrite({slots:S.slots,avail:{}}); }
+    const data = await jRead();
+    let slots = expireStale(data.slots || []);
+    const av = data.avail || {};
+
+    // Sync rolling window — add missing dates, clean old ones
+    const {slots: synced, changed} = syncRollingWindow(slots);
+
+    if(changed){
+      // Save updated slots back to JSONBin
+      await jWrite({slots: synced, avail: av});
+      console.log("Rolling window updated and saved.");
+    }
+
+    S.slots = synced;
+    S.avail = av;
   }catch(e){
-    S.slots=freshSlots(); S.avail={};
+    // First time or error — create fresh slots
+    const fresh = slotsForDate; // will build below
+    let initSlots = [];
+    for(let d=0;d<WINDOW_DAYS;d++) initSlots = [...initSlots, ...slotsForDate(tod(d))];
+    try{ await jWrite({slots: initSlots, avail:{}}); }catch{}
+    S.slots = initSlots;
+    S.avail = {};
   }
-  S.activeDay=tod(0);
-  S.view="landing";
+  S.activeDay = tod(0);
+  S.view = "landing";
   render();
   startPoll();
 }
 
 function startPoll(){
   clearInterval(pollTimer);
-  pollTimer=setInterval(async()=>{
+  pollTimer = setInterval(async()=>{
     if(["loading","form","pin"].includes(S.view)) return;
     try{
-      const data=await jRead();
-      S.slots=expireStale(data.slots||[]);
-      S.avail=data.avail||{};
+      const data = await jRead();
+      let slots = expireStale(data.slots || []);
+      const {slots: synced, changed} = syncRollingWindow(slots);
+      if(changed){
+        await jWrite({slots: synced, avail: S.avail});
+      }
+      S.slots = synced;
+      S.avail = data.avail || {};
       render();
     }catch{}
-  },6000);
+  }, 8000);
 }
 
 // ─── CANDIDATE ACTIONS ────────────────────────────────────────────────────────
 async function goRegister(slotId){
   let data; try{ data=await jRead(); }catch{ toast("⚠️ Network error. Try again."); return; }
-  let slots=expireStale(data.slots||[]);
-  const af=slots.filter(s=>s.status==="filling").length;
-  const slot=slots.find(s=>s.id===slotId);
-  if(!slot||slot.status!=="available"){ toast("❌ Slot just taken. Pick another."); S.slots=slots; render(); return; }
-  if(af>=MAX_FILL){ toast(`⏳ ${MAX_FILL} people filling form now. Please wait a moment.`,5000); S.slots=slots; render(); return; }
-  const upd=slots.map(s=>s.id===slotId?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
-  try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Network error. Try again."); return; }
+  let slots = expireStale(data.slots||[]);
+  const {slots:synced} = syncRollingWindow(slots);
+  const af=synced.filter(s=>s.status==="filling").length;
+  const slot=synced.find(s=>s.id===slotId);
+  if(!slot||slot.status!=="available"){ toast("❌ Slot just taken. Pick another."); S.slots=synced; render(); return; }
+  if(af>=MAX_FILL){ toast(`⏳ ${MAX_FILL} people filling now. Please wait.`,5000); S.slots=synced; render(); return; }
+  const upd=synced.map(s=>s.id===slotId?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
+  try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Network error."); return; }
   S.slots=upd; S.activeSlotId=slotId; S.view="form"; render();
 }
 
@@ -232,7 +297,8 @@ async function cancelForm(){
   if(S.activeSlotId){
     try{
       const data=await jRead();
-      const upd=(data.slots||[]).map(s=>s.id===S.activeSlotId&&s.sid===SID?{...s,status:"available",fillingAt:null,sid:null}:s);
+      const upd=(data.slots||[]).map(s=>s.id===S.activeSlotId&&s.sid===SID
+        ?{...s,status:"available",fillingAt:null,sid:null}:s);
       await jWrite({slots:upd,avail:S.avail}); S.slots=upd;
     }catch{}
   }
@@ -250,30 +316,30 @@ async function submitForm(){
     position:document.getElementById("fpo")?.value?.trim()||"",
     experience:document.getElementById("fex")?.value?.trim()||"",
     notes:document.getElementById("fnt")?.value?.trim()||""};
-  let data; try{ data=await jRead(); }catch{ toast("⚠️ Network error. Try again."); if(btn){btn.disabled=false;btn.textContent="Confirm Registration →";} return; }
-  const upd=(data.slots||[]).map(s=>s.id===S.activeSlotId?{...s,status:"booked",...fd,filledAt:new Date().toISOString(),sid:null}:s);
-  try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Save failed. Try again."); if(btn){btn.disabled=false;btn.textContent="Confirm Registration →";} return; }
+  let data; try{ data=await jRead(); }catch{ toast("⚠️ Network error."); if(btn){btn.disabled=false;btn.textContent="Confirm →";} return; }
+  const upd=(data.slots||[]).map(s=>s.id===S.activeSlotId
+    ?{...s,status:"booked",...fd,filledAt:new Date().toISOString(),sid:null}:s);
+  try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Save failed."); if(btn){btn.disabled=false;btn.textContent="Confirm →";} return; }
   S.slots=upd; S.successSlot=upd.find(s=>s.id===S.activeSlotId);
   S.activeSlotId=null; S.view="success"; render();
 }
 
-// ─── ADMIN PIN ────────────────────────────────────────────────────────────────
+// ─── ADMIN ACTIONS ────────────────────────────────────────────────────────────
 function checkPin(){
   const pin=document.getElementById("pin-input")?.value?.trim();
   if(pin===ADMIN_PIN){ S.pinError=false; S.view="iv-select"; render(); }
   else{ S.pinError=true; render(); }
 }
 
-// ─── ADMIN ACTIONS ────────────────────────────────────────────────────────────
 function toggleAvail(ivId,date,val){
   if(!S.avail[ivId]) S.avail[ivId]={};
   S.avail[ivId][date]=val;
-  jWrite({slots:S.slots,avail:S.avail}).catch(()=>toast("⚠️ Network error saving availability."));
+  jWrite({slots:S.slots,avail:S.avail}).catch(()=>toast("⚠️ Error saving."));
   render();
 }
 function getAvail(ivId,date){
   if(!S.avail[ivId]) return true;
-  return S.avail[ivId][date]!==undefined?S.avail[ivId][date]:true;
+  return S.avail[ivId][date]!==undefined ? S.avail[ivId][date] : true;
 }
 
 function openCancelModal(slotId){
@@ -282,10 +348,10 @@ function openCancelModal(slotId){
   if(!slot) return;
   document.getElementById("modal-info").innerHTML=`
     <div style="font-weight:700;font-size:15px;color:#1a1a2e;margin-bottom:4px">${esc(slot.name)}</div>
-    <div style="font-family:'DM Mono',monospace;font-size:12px;color:#888;margin-bottom:6px">${esc(slot.email)}</div>
+    <div class="mono" style="font-size:12px;color:#888;margin-bottom:6px">${esc(slot.email)}</div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <span style="font-family:'DM Mono',monospace;font-size:12px;color:#c8944a">${dayName(slot.date)}, ${fmtDate(slot.date)}</span>
-      <span style="font-family:'DM Mono',monospace;font-size:13px;color:#4a90c8;font-weight:700">${fmtTime(slot.time)}</span>
+      <span class="mono" style="font-size:12px;color:#c8944a">${dayName(slot.date)}, ${fmtDate(slot.date)}</span>
+      <span class="mono" style="font-size:13px;color:#4a90c8;font-weight:700">${fmtTime(slot.time)}</span>
     </div>`;
   document.getElementById("cancel-modal").style.display="flex";
 }
@@ -300,32 +366,25 @@ async function confirmCancel(){
   const upd=(data.slots||[]).map(s=>s.id===S.cancelTargetId
     ?{...s,status:"cancelled",cancelledAt:new Date().toISOString(),cancelledBy:adminName,sid:null}:s);
   try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Save failed."); closeModal(); return; }
-  S.slots=upd; closeModal();
-  toast("✅ Interview cancelled. Slot is now free.");
-  render();
+  S.slots=upd; closeModal(); toast("✅ Interview cancelled. Slot is now free."); render();
 }
 
 async function restoreSlot(slotId){
   let data; try{ data=await jRead(); }catch{ toast("⚠️ Network error."); return; }
   const upd=(data.slots||[]).map(s=>s.id===slotId
-    ?{...s,status:"available",name:null,email:null,phone:null,position:null,experience:null,
-        notes:null,filledAt:null,cancelledAt:null,cancelledBy:null}:s);
+    ?{...s,status:"available",name:null,email:null,phone:null,position:null,
+        experience:null,notes:null,filledAt:null,cancelledAt:null,cancelledBy:null}:s);
   try{ await jWrite({slots:upd,avail:S.avail}); }catch{ toast("⚠️ Save failed."); return; }
   S.slots=upd; toast("✅ Slot restored."); render();
-}
-
-async function resetAll(){
-  if(!confirm("Reset ALL slots and registrations? Cannot be undone.")) return;
-  const fresh={slots:freshSlots(),avail:{}};
-  try{ await jWrite(fresh); S.slots=fresh.slots; S.avail=fresh.avail; toast("✅ Schedule reset."); render(); }
-  catch{ toast("⚠️ Network error."); }
 }
 
 window.addEventListener("beforeunload",()=>{
   if(!S.activeSlotId) return;
   try{
-    const upd=S.slots.map(s=>s.id===S.activeSlotId&&s.sid===SID?{...s,status:"available",fillingAt:null,sid:null}:s);
-    navigator.sendBeacon&&navigator.sendBeacon(`${JB}/b/${CFG.binId}`,new Blob([JSON.stringify({slots:upd,avail:S.avail})],{type:"application/json"}));
+    const upd=S.slots.map(s=>s.id===S.activeSlotId&&s.sid===SID
+      ?{...s,status:"available",fillingAt:null,sid:null}:s);
+    navigator.sendBeacon&&navigator.sendBeacon(`${JB}/b/${CFG.binId}`,
+      new Blob([JSON.stringify({slots:upd,avail:S.avail})],{type:"application/json"}));
   }catch{}
 });
 
@@ -333,10 +392,14 @@ window.addEventListener("beforeunload",()=>{
 function render(){
   const app=document.getElementById("app");
   const{view,slots,avail}=S;
-  const af=slots.filter(s=>s.status==="filling").length;
-  const bookedAll=slots.filter(s=>s.status==="booked");
-  const cancelledAll=slots.filter(s=>s.status==="cancelled");
-  const dates=[...new Set(slots.map(s=>s.date))].sort();
+
+  // Only show today onwards for candidates
+  const todayStr=tod(0);
+  const futureSlots=slots.filter(s=>s.date>=todayStr);
+  const af=futureSlots.filter(s=>s.status==="filling").length;
+  const bookedAll=futureSlots.filter(s=>s.status==="booked");
+  const cancelledAll=futureSlots.filter(s=>s.status==="cancelled");
+  const dates=[...new Set(futureSlots.map(s=>s.date))].sort();
 
   const hdr=(sub,back)=>`
     <div style="margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #e0dbd0;
@@ -363,7 +426,7 @@ function render(){
       </h1>
       <div class="mono" style="font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:.12em;margin-top:16px">
         <span class="spin" style="border-color:rgba(0,0,0,.15);border-top-color:#c8944a"></span>
-        Connecting…
+        Loading schedule…
       </div>
     </div>`;
     return;
@@ -371,17 +434,19 @@ function render(){
 
   // ── LANDING ───────────────────────────────────────────────────────────────
   if(view==="landing"){
-    const todayStr=tod(0);
     const todayBooked=bookedAll.filter(s=>s.date===todayStr);
     app.innerHTML=`<div class="view">
       ${hdr("Select your role")}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin:0 auto 36px">
+
+
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin:0 auto 32px">
         <button class="lcard" onclick="S.view='candidate';render()">
           <div style="font-size:36px;margin-bottom:12px">🎯</div>
           <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:6px">I'm a Candidate</div>
           <div style="font-size:13px;color:#888;line-height:1.6">Browse 30-min slots 9 AM–8 PM, see who's registered, and book your interview.</div>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-            <span class="badge bg-g">✓ ${slots.filter(s=>s.status==="available").length} open</span>
+            <span class="badge bg-g">✓ ${futureSlots.filter(s=>s.status==="available").length} open</span>
             <span class="badge bg-b">${bookedAll.length} booked</span>
             ${cancelledAll.length>0?`<span class="badge bg-cancelled">${cancelledAll.length} cancelled</span>`:""}
           </div>
@@ -396,6 +461,7 @@ function render(){
           </div>
         </button>
       </div>
+
       <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
         📌 Today's Interviews — ${dayName(todayStr)}, ${fmtDate(todayStr)} (${todayBooked.length})
       </div>
@@ -416,23 +482,19 @@ function render(){
     return;
   }
 
-  // ── ADMIN PIN SCREEN ──────────────────────────────────────────────────────
+  // ── PIN ───────────────────────────────────────────────────────────────────
   if(view==="pin"){
     app.innerHTML=`<div class="view">
       ${hdr("Admin access","goLanding()")}
       <div class="pin-box">
         <div style="font-size:40px;margin-bottom:16px">🔐</div>
         <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:6px">Admin Login</h2>
-        <p style="font-size:13px;color:#888;margin-bottom:24px;line-height:1.6">
-          Enter the 4-digit PIN to access the admin panel.
-        </p>
-        <input class="pin-input" id="pin-input" type="password" maxlength="4"
-          placeholder="• • • •" style="margin-bottom:12px;font-size:28px;letter-spacing:.4em;text-align:center"
+        <p style="font-size:13px;color:#888;margin-bottom:24px;line-height:1.6">Enter the 4-digit PIN to access the admin panel.</p>
+        <input id="pin-input" type="password" maxlength="4" placeholder="• • • •"
+          style="text-align:center;font-size:28px;letter-spacing:.4em;margin-bottom:12px"
           onkeydown="if(event.key==='Enter')checkPin()"/>
         ${S.pinError?`<div style="color:#c0392b;font-size:13px;margin-bottom:12px;font-family:'DM Mono',monospace">❌ Wrong PIN. Try again.</div>`:""}
-        <button class="btn btn-amber" onclick="checkPin()" style="width:100%;padding:13px;font-size:14px;margin-top:4px">
-          Enter Admin Panel →
-        </button>
+        <button class="btn btn-amber" onclick="checkPin()" style="width:100%;padding:13px;font-size:14px;margin-top:4px">Enter Admin Panel →</button>
         <p class="mono" style="font-size:10px;color:#ccc;margin-top:14px">Only Kondareddy &amp; Ramireddy have the PIN</p>
       </div>
     </div>`;
@@ -448,9 +510,9 @@ function render(){
         <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:14px">Select your name</div>
         <div style="display:flex;flex-direction:column;gap:12px">
           ${IVS.map(i=>{
-            const myBooked=slots.filter(s=>s.ivId===i.id&&s.status==="booked").length;
-            const myCancelled=slots.filter(s=>s.ivId===i.id&&s.status==="cancelled").length;
-            const todayB=slots.filter(s=>s.ivId===i.id&&s.status==="booked"&&s.date===tod(0)).length;
+            const myBooked=futureSlots.filter(s=>s.ivId===i.id&&s.status==="booked").length;
+            const myCancelled=futureSlots.filter(s=>s.ivId===i.id&&s.status==="cancelled").length;
+            const todayB=futureSlots.filter(s=>s.ivId===i.id&&s.status==="booked"&&s.date===todayStr).length;
             return`<button onclick="S.ivId='${i.id}';S.activeDay=tod(0);S.view='iv-panel';render()"
               style="background:#fff;border:2px solid #e0dbd0;border-radius:14px;padding:20px 22px;
               cursor:pointer;display:flex;align-items:center;gap:16px;transition:all .18s;text-align:left;width:100%"
@@ -463,7 +525,7 @@ function render(){
                 <div style="font-size:12px;color:#aaa;margin-top:2px">Admin · Interviewer</div>
                 <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
                   <span class="badge bg-b">${todayB} today</span>
-                  <span class="badge bg-g">${myBooked} total</span>
+                  <span class="badge bg-g">${myBooked} booked</span>
                   ${myCancelled>0?`<span class="badge bg-cancelled">${myCancelled} cancelled</span>`:""}
                 </div>
               </div>
@@ -478,24 +540,27 @@ function render(){
   // ── ADMIN PANEL ───────────────────────────────────────────────────────────
   if(view==="iv-panel"){
     const i=iv(S.ivId);
-    const mySlots=slots.filter(s=>s.ivId===i.id);
+    // Admin sees all their slots (including today onwards)
+    const mySlots=futureSlots.filter(s=>s.ivId===i.id);
     const myDates=[...new Set(mySlots.map(s=>s.date))].sort();
-    const activeDate=S.activeDay||myDates[0];
+    const activeDate=S.activeDay&&myDates.includes(S.activeDay)?S.activeDay:myDates[0];
     const daySlots=mySlots.filter(s=>s.date===activeDate).sort((a,b)=>a.time.localeCompare(b.time));
     const dayBooked=daySlots.filter(s=>s.status==="booked");
     const dayCancelled=daySlots.filter(s=>s.status==="cancelled");
     const dayAvl=getAvail(i.id,activeDate);
     const totalBooked=mySlots.filter(s=>s.status==="booked").length;
     const totalCancelled=mySlots.filter(s=>s.status==="cancelled").length;
-    const todayB=mySlots.filter(s=>s.status==="booked"&&s.date===tod(0)).length;
+    const todayB=mySlots.filter(s=>s.status==="booked"&&s.date===todayStr).length;
 
     const dayTabs=myDates.map(date=>{
       const db=mySlots.filter(s=>s.date===date&&s.status==="booked").length;
       const dc=mySlots.filter(s=>s.date===date&&s.status==="cancelled").length;
+      const isToday=date===todayStr;
       return`<button class="dtab ${date===activeDate?"act":""}" onclick="setDay('${date}')">
-        <div>${dayName(date).slice(0,3)}</div>
+        <div style="font-size:10px;font-weight:${isToday?700:400}">${dayName(date).slice(0,3)}</div>
         <div style="font-size:9px;margin-top:1px;opacity:.8">${date.slice(5)}</div>
         <div style="display:flex;justify-content:center;gap:3px;margin-top:3px;min-height:8px">
+          ${isToday?`<span style="width:6px;height:6px;border-radius:50%;background:${date===activeDate?"#fff":"#c8944a"};display:inline-block"></span>`:""}
           ${db>0?`<span style="width:6px;height:6px;border-radius:50%;background:${date===activeDate?"#fff":"#6ec89a"};display:inline-block"></span>`:""}
           ${dc>0?`<span style="width:6px;height:6px;border-radius:50%;background:${date===activeDate?"#ffaaaa":"#f5c0c0"};display:inline-block"></span>`:""}
         </div>
@@ -528,7 +593,6 @@ function render(){
         </div>`;
       else if(isF) cell=`<span class="badge bg-a">⏳ Candidate filling form…</span>`;
       else cell=`<span class="mono" style="font-size:12px;color:${dayAvl?"#ddd":"#eee"}">${dayAvl?"Free":"— Unavailable"}</span>`;
-
       return`<div class="tl-row" style="background:${isB?"#fafff8":isC?"#fff8f8":""}">
         <div class="tl-time" style="color:${isB?i.color:isC?"#f5c0c0":"#ccc"}">${fmtTime(slot.time)}</div>
         <div class="tl-cell">${cell}</div>
@@ -576,10 +640,14 @@ function render(){
             <div class="stat-box"><div class="stat-num" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join("")}
         </div>
       </div>
+
       <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px">${dayTabs}</div>
+
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
         <div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700">${dayName(activeDate)}</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700">
+            ${dayName(activeDate)} ${activeDate===todayStr?'<span class="badge bg-a" style="font-size:10px;vertical-align:middle;margin-left:6px">Today</span>':""}
+          </div>
           <div class="mono" style="font-size:11px;color:#aaa;margin-top:2px">${fmtDate(activeDate)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -595,6 +663,7 @@ function render(){
           </div>
         </div>
       </div>
+
       <div class="card" style="margin-bottom:4px">
         <div style="padding:10px 16px;background:#faf8f4;border-bottom:1px solid #ede8e0;
           display:flex;align-items:center;justify-content:space-between">
@@ -605,6 +674,7 @@ function render(){
         </div>
         ${tlRows}
       </div>
+
       ${dayBooked.length>0?`
         <div style="margin-top:22px">
           <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
@@ -615,6 +685,7 @@ function render(){
             <tbody>${detailRows}</tbody></table>
           </div>
         </div>`:""}
+
       ${dayCancelled.length>0?`
         <div style="margin-top:20px">
           <div class="mono" style="font-size:10px;color:#c0392b;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
@@ -625,10 +696,10 @@ function render(){
             <tbody>${cancelRows}</tbody></table>
           </div>
         </div>`:""}
+
       <div style="margin-top:22px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost" onclick="S.view='iv-select';render()" style="font-size:12px">← Switch</button>
         <button class="btn btn-ghost" onclick="goLanding()" style="font-size:12px">🏠 Home</button>
-        <button class="btn btn-ghost-red" onclick="resetAll()" style="font-size:12px;margin-left:auto">↺ Reset All</button>
       </div>
     </div>`;
     return;
@@ -636,11 +707,10 @@ function render(){
 
   // ── CANDIDATE BOARD ───────────────────────────────────────────────────────
   if(view==="candidate"){
-    const todayStr=tod(0);
     const ivSummary=IVS.map(i=>{
       const avl=getAvail(i.id,todayStr);
-      const booked=slots.filter(s=>s.ivId===i.id&&s.status==="booked").length;
-      const open=slots.filter(s=>s.ivId===i.id&&s.date>=todayStr&&s.status==="available").length;
+      const booked=futureSlots.filter(s=>s.ivId===i.id&&s.status==="booked").length;
+      const open=futureSlots.filter(s=>s.ivId===i.id&&s.status==="available").length;
       return`<div style="background:#fff;border:1.5px solid #e8e2d8;border-radius:13px;padding:14px 18px;display:flex;align-items:center;gap:13px">
         <div style="width:42px;height:42px;border-radius:50%;background:${i.color};
           display:flex;align-items:center;justify-content:center;color:#fff;
@@ -656,11 +726,12 @@ function render(){
       </div>`;}).join("");
 
     const sections=dates.map(date=>{
-      const kkS=slots.filter(s=>s.ivId==="kk"&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
-      const rrS=slots.filter(s=>s.ivId==="rr"&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+      const kkS=futureSlots.filter(s=>s.ivId==="kk"&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+      const rrS=futureSlots.filter(s=>s.ivId==="rr"&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
       const kkAvl=getAvail("kk",date), rrAvl=getAvail("rr",date);
       const bookedCount=[...kkS,...rrS].filter(s=>s.status==="booked").length;
       const allTimes=[...new Set([...kkS,...rrS].map(s=>s.time))].sort();
+      const isToday=date===todayStr;
 
       const slotCell=(slot,iObj,ivAvl)=>{
         if(!slot) return`<td style="padding:8px 12px;border-left:1px solid #f0ece4;color:#eee;font-size:11px">—</td>`;
@@ -681,10 +752,11 @@ function render(){
         </td>`;};
 
       return`<div style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
           <span style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700">${dayName(date)}</span>
+          ${isToday?`<span class="badge bg-a" style="font-size:9px">Today</span>`:""}
           <span class="mono" style="font-size:11px;color:#aaa">${fmtDate(date)}</span>
-          ${bookedCount>0?`<span class="badge bg-g" style="font-size:9px">${bookedCount} booked</span>`:""}
+          ${bookedCount>0?`<span class="badge bg-b" style="font-size:9px">${bookedCount} booked</span>`:""}
           ${!(kkAvl||rrAvl)?`<span class="badge bg-r" style="font-size:9px">Both unavailable</span>`:""}
           <div style="flex:1;height:1px;background:#e8e2d8;min-width:20px"></div>
         </div>
@@ -821,8 +893,10 @@ function setDay(d){ S.activeDay=d; render(); }
 async function loadData(){
   try{
     const data=await jRead();
-    S.slots=expireStale(data.slots||[]);
-    S.avail=data.avail||{};
+    let slots=expireStale(data.slots||[]);
+    const{slots:synced,changed}=syncRollingWindow(slots);
+    if(changed) await jWrite({slots:synced,avail:S.avail});
+    S.slots=synced; S.avail=data.avail||{};
     render(); toast("✅ Refreshed.");
   }catch{ toast("⚠️ Network error."); }
 }
