@@ -394,15 +394,10 @@ async function confirmCancel(){
     phone:bookedSlot.phone||"", position:bookedSlot.position||"",
     cancelledAt:new Date().toISOString(), cancelledBy:adminName,
   };
-  // Expire stale filling slots AND free the cancelled slot in one write
-  const now = Date.now();
+  // Free only the cancelled slot — don't touch other active filling sessions
   const updSlots = (data.slots||[]).map(s=>{
-    // Free the cancelled slot
     if(s.id===slotId) return {...s, status:"available", name:null, email:null, phone:null,
         position:null, experience:null, notes:null, filledAt:null, fillingAt:null, sid:null};
-    // Also expire any stale "filling" slots (abandoned forms older than 8 min)
-    if(s.status==="filling" && s.fillingAt && now - new Date(s.fillingAt).getTime() > 8*60000)
-      return {...s, status:"available", fillingAt:null, sid:null};
     return s;
   });
   const updLog = [...(data.cancelLog||[]), logEntry];
@@ -760,18 +755,18 @@ function render(){
       const slotCell=(slot,iObj,ivAvl)=>{
         if(!slot) return`<td style="padding:8px 12px;border-left:1px solid #f0ece4;color:#eee;font-size:11px">—</td>`;
         const isB=slot.status==="booked", isF=slot.status==="filling";
-        const canR = slot.status==="available" && ivAvl && af<MAX_FILL;
+        // isF means THIS slot is being filled by someone right now
+        // Available slots always show Register → ; concurrency check happens on click inside goRegister()
         const na = slot.status==="available" && !ivAvl;
         return`<td style="padding:8px 12px;border-left:1px solid #f0ece4;background:${isB?"#f4fbf7":isF?"#fffbf0":"#fff"}">
           ${isB?`<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
             <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>`:
-          isF?`<span class="badge bg-a" style="font-size:9px">⏳ Filling…</span>`:
+          isF?`<span class="badge bg-a" style="font-size:9px">⏳ Being filled…</span>`:
           na?`<span class="mono" style="font-size:11px;color:#ddd">Unavailable</span>`:
-          `<button onclick="goRegister('${slot.id}')" ${canR?"":'disabled'}
-            style="padding:6px 12px;background:${canR?iObj.color:"#e0dbd0"};color:${canR?"#fff":"#bbb"};
+          `<button onclick="goRegister('${slot.id}')"
+            style="padding:6px 12px;background:${iObj.color};color:#fff;
             border:none;border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
-            cursor:${canR?"pointer":"not-allowed"};transition:all .15s">
-            ${canR?"Register →":"Wait…"}</button>`}
+            cursor:pointer;transition:all .15s">Register →</button>`}
         </td>`;};
 
       return`<div style="margin-bottom:28px">
