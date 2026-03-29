@@ -138,11 +138,24 @@ function fmtAt(iso){ return iso?new Date(iso).toLocaleString("en-GB",{day:"2-dig
 function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
 function iv(id){ return IVS.find(i=>i.id===id)||IVS[0] }
 
+// Apply DSM rule: Kondareddy 1:00 PM is blocked Monday–Friday only
+function applyDSMRule(slots){
+  return slots.map(s => {
+    if(s.ivId==="kk" && s.time==="13:00" && s.status!=="booked"){
+      const [y,m,d] = s.date.split("-").map(Number);
+      const day = new Date(y,m-1,d).getDay(); // 0=Sun,1=Mon...5=Fri,6=Sat
+      const isWeekday = day>=1 && day<=5;
+      if(isWeekday) return {...s, status:"dsm", name:null, email:null, phone:null,
+        position:null, experience:null, notes:null, filledAt:null, fillingAt:null, sid:null};
+    }
+    return s;
+  });
+}
+
 function slotsForDate(date){
   return IVS.flatMap(i=>TIMES.map(time=>({
     id:uid(), ivId:i.id, date, time,
-    // Kondareddy 1:00 PM is permanently blocked for DSM every day
-    status: (i.id==="kk" && time==="13:00") ? "dsm" : "available",
+    status:"available",
     name:null, email:null, phone:null, position:null, experience:null, notes:null,
     filledAt:null, fillingAt:null, sid:null
   })));
@@ -214,15 +227,13 @@ async function boot(){
     const av = data.avail || {};
     const log = data.cancelLog || [];
 
-    // Only on boot: safely add any missing future dates
-    // Migrate existing kk 13:00 slots to dsm status
-    slots = slots.map(s => (s.ivId==="kk" && s.time==="13:00" && s.status==="available")
-      ? {...s, status:"dsm"} : s);
-    const { slots:synced, added } = addMissingDates(slots);
-    if(added){
-      await safeWrite({ slots:synced, avail:av, cancelLog:log });
-    }
-    S.slots = synced;
+    // Apply DSM rule first, then add missing dates
+    slots = applyDSMRule(slots);
+    const { slots:synced } = addMissingDates(slots);
+    const dsmFixed = applyDSMRule(synced);
+    // Always save back so DSM is permanently stored in JSONBin for everyone
+    await safeWrite({ slots:dsmFixed, avail:av, cancelLog:log });
+    S.slots = dsmFixed;
     S.avail = av;
     S.cancelLog = log;
   }catch(e){
@@ -260,9 +271,9 @@ function startPoll(){
       // If stale slots found, write cleanup to database so everyone sees freed slots
       if(hasStale){
         try{ await safeWrite({slots:cleaned, avail:data.avail||{}, cancelLog:data.cancelLog||[]}); }catch{}
-        S.slots = cleaned;
+        S.slots = applyDSMRule(cleaned);
       } else {
-        S.slots = slots;
+        S.slots = applyDSMRule(slots);
       }
       S.avail = data.avail || {};
       S.cancelLog = data.cancelLog || [];
@@ -920,7 +931,7 @@ function setDay(d){ S.activeDay=d; render(); }
 async function loadData(){
   try{
     const data=await jRead();
-    S.slots=expireStale(data.slots||[]);
+    S.slots=applyDSMRule(expireStale(data.slots||[]));
     S.avail=data.avail||{};
     S.cancelLog=data.cancelLog||[];
     render(); toast("✅ Refreshed.");
