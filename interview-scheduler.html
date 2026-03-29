@@ -141,7 +141,8 @@ function iv(id){ return IVS.find(i=>i.id===id)||IVS[0] }
 function slotsForDate(date){
   return IVS.flatMap(i=>TIMES.map(time=>({
     id:uid(), ivId:i.id, date, time,
-    status:"available",  // available | filling | booked
+    // Kondareddy 1:00 PM is permanently blocked for DSM every day
+    status: (i.id==="kk" && time==="13:00") ? "dsm" : "available",
     name:null, email:null, phone:null, position:null, experience:null, notes:null,
     filledAt:null, fillingAt:null, sid:null
   })));
@@ -214,6 +215,9 @@ async function boot(){
     const log = data.cancelLog || [];
 
     // Only on boot: safely add any missing future dates
+    // Migrate existing kk 13:00 slots to dsm status
+    slots = slots.map(s => (s.ivId==="kk" && s.time==="13:00" && s.status==="available")
+      ? {...s, status:"dsm"} : s);
     const { slots:synced, added } = addMissingDates(slots);
     if(added){
       await safeWrite({ slots:synced, avail:av, cancelLog:log });
@@ -274,6 +278,7 @@ async function goRegister(slotId){
   let slots = expireStale(data.slots||[]);
   const af = slots.filter(s=>s.status==="filling").length;
   const slot = slots.find(s=>s.id===slotId);
+  if(!slot||slot.status==="dsm"){ toast("❌ This slot is reserved."); S.slots=slots; render(); return; }
   if(!slot||slot.status!=="available"){ toast("❌ Slot just taken. Pick another."); S.slots=slots; render(); return; }
   if(af>=MAX_FILL){ toast(`⏳ ${MAX_FILL} people filling form now. Please wait.`,5000); S.slots=slots; render(); return; }
   const upd = slots.map(s=>s.id===slotId?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
@@ -614,8 +619,11 @@ function render(){
           <button class="cancel-btn" onclick="openCancelModal('${slot.id}')">✕ Cancel Interview</button>
         </div>`;
       else if(isF) cell=`<span class="badge bg-a">⏳ Candidate filling form…</span>`;
+      else if(slot.status==="dsm") cell=`<span style="font-family:'DM Mono',monospace;font-size:12px;
+        color:#888;background:#f0ece4;padding:4px 12px;border-radius:6px;font-weight:500">
+        🔒 DSM — Blocked daily</span>`;
       else cell=`<span class="mono" style="font-size:12px;color:${dayAvl?"#ddd":"#eee"}">${dayAvl?"Free":"— Unavailable"}</span>`;
-      return`<div class="tl-row" style="background:${isB?"#fafff8":""}">
+      return`<div class="tl-row" style="background:${isB?"#fafff8":slot.status==="dsm"?"#faf8f0":""}">
         <div class="tl-time" style="color:${isB?i.color:"#ccc"}">${fmtTime(slot.time)}</div>
         <div class="tl-cell">${cell}</div>
       </div>`;}).join("");
@@ -759,7 +767,10 @@ function render(){
         // Available slots always show Register → ; concurrency check happens on click inside goRegister()
         const na = slot.status==="available" && !ivAvl;
         return`<td style="padding:8px 12px;border-left:1px solid #f0ece4;background:${isB?"#f4fbf7":isF?"#fffbf0":"#fff"}">
-          ${isB?`<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
+          ${slot.status==="dsm"
+            ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#888;
+                background:#f0ece4;padding:4px 10px;border-radius:6px;font-weight:500">DSM</span>`
+            : isB?`<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
             <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>`:
           isF?`<span class="badge bg-a" style="font-size:9px">⏳ Being filled…</span>`:
           na?`<span class="mono" style="font-size:11px;color:#ddd">Unavailable</span>`:
