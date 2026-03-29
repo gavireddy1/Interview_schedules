@@ -376,10 +376,17 @@ async function confirmCancel(){
     phone:bookedSlot.phone||"", position:bookedSlot.position||"",
     cancelledAt:new Date().toISOString(), cancelledBy:adminName,
   };
-  const updSlots = (data.slots||[]).map(s=>s.id===slotId
-    ? {...s, status:"available", name:null, email:null, phone:null, position:null,
-        experience:null, notes:null, filledAt:null, fillingAt:null, sid:null}
-    : s);
+  // Expire stale filling slots AND free the cancelled slot in one write
+  const now = Date.now();
+  const updSlots = (data.slots||[]).map(s=>{
+    // Free the cancelled slot
+    if(s.id===slotId) return {...s, status:"available", name:null, email:null, phone:null,
+        position:null, experience:null, notes:null, filledAt:null, fillingAt:null, sid:null};
+    // Also expire any stale "filling" slots (abandoned forms older than 8 min)
+    if(s.status==="filling" && s.fillingAt && now - new Date(s.fillingAt).getTime() > 8*60000)
+      return {...s, status:"available", fillingAt:null, sid:null};
+    return s;
+  });
   const updLog = [...(data.cancelLog||[]), logEntry];
   try{ await safeWrite({slots:updSlots, avail:S.avail, cancelLog:updLog}); }
   catch{
@@ -410,7 +417,12 @@ function render(){
 
   // Only show today onwards
   const visibleSlots = slots.filter(s=>s.date>=todayStr);
-  const af = visibleSlots.filter(s=>s.status==="filling").length;
+  // Compute active fillers with stale-expiry so freed slots are immediately bookable
+  const nowMs = Date.now();
+  const af = visibleSlots.filter(s=>
+    s.status==="filling" && s.fillingAt &&
+    (nowMs - new Date(s.fillingAt).getTime()) < 8*60000
+  ).length;
   const bookedAll = visibleSlots.filter(s=>s.status==="booked");
   const dates = [...new Set(visibleSlots.map(s=>s.date))].sort();
 
