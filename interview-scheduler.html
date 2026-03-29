@@ -233,15 +233,33 @@ async function boot(){
   startPoll();
 }
 
-// FIX 3: Poll is READ ONLY — never writes, never deletes, just refreshes local state
 function startPoll(){
   clearInterval(pollTimer);
   pollTimer = setInterval(async()=>{
     if(["loading","form","pin"].includes(S.view)) return;
-    if(writing) return; // skip poll if a write is in progress
+    if(writing) return;
     try{
       const data = await jRead();
-      S.slots = expireStale(data.slots || []);
+      let slots = data.slots || [];
+      const now = Date.now();
+
+      // Check for stale "filling" slots that need cleanup
+      let hasStale = false;
+      const cleaned = slots.map(s=>{
+        if(s.status==="filling" && s.fillingAt && now - new Date(s.fillingAt).getTime() > 8*60000){
+          hasStale = true;
+          return {...s, status:"available", fillingAt:null, sid:null};
+        }
+        return s;
+      });
+
+      // If stale slots found, write cleanup to database so everyone sees freed slots
+      if(hasStale){
+        try{ await safeWrite({slots:cleaned, avail:data.avail||{}, cancelLog:data.cancelLog||[]}); }catch{}
+        S.slots = cleaned;
+      } else {
+        S.slots = slots;
+      }
       S.avail = data.avail || {};
       S.cancelLog = data.cancelLog || [];
       render();
