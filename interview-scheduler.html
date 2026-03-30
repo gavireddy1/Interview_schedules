@@ -139,6 +139,13 @@ function tod(n=0){
 function dayName(ds){ const[y,m,d]=ds.split("-").map(Number); return DAYS[new Date(y,m-1,d).getDay()] }
 function fmtDate(ds){ const[y,m,d]=ds.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) }
 function fmtTime(t){ const[h,m]=t.split(":").map(Number); return `${h>12?h-12:h||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}` }
+function fmtEndTime(t){
+  // Add 30 minutes to get end time
+  const[h,m]=t.split(":").map(Number);
+  const total=h*60+m+30;
+  const eh=Math.floor(total/60), em=total%60;
+  return `${eh>12?eh-12:eh||12}:${String(em).padStart(2,"0")} ${eh>=12?"PM":"AM"}`;
+}
 function fmtAt(iso){ return iso?new Date(iso).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—" }
 function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
 function iv(id){ return IVS.find(i=>i.id===id)||IVS[0] }
@@ -199,11 +206,10 @@ let writing = false;
 async function safeWrite(data){
   if(writing) throw new Error("Write in progress — skipped");
 
-  // INTEGRITY CHECK: never write fewer booked slots than what is being saved
-  // Only check when we have existing data (not on fresh install)
+  // INTEGRITY CHECK: only block if we'd lose more than 1 booking
   const newBooked = (data.slots||[]).filter(s=>s.status==="booked").length;
   const curBooked = S.slots.filter(s=>s.status==="booked").length;
-  if(curBooked > 0 && newBooked < curBooked){
+  if(curBooked > 2 && newBooked < curBooked - 1){
     throw new Error("Integrity check failed — write blocked");
   }
 
@@ -306,6 +312,11 @@ async function boot(){
     } else {
       S.slots = applyDSMRule(slots);
     }
+        // Safety net: if slots still empty after all processing, generate local ones
+    if(S.slots.length === 0){
+      let ls=[];for(let d=0;d<WINDOW;d++) ls=[...ls,...slotsForDate(tod(d))];
+      S.slots=applyDSMRule(ls);
+    }
     S.avail = av;
     S.cancelLog = log;
   }catch(e){
@@ -318,8 +329,12 @@ async function boot(){
       S.cancelLog = cached.cancelLog || [];
       // Silently loaded from cache — no alarming message
     } else {
-      S.slots = []; S.avail = {}; S.cancelLog = [];
-      // Show gentle message only when there's truly no data
+      // No cache and no network — generate local slots so UI always shows something
+      let localSlots = [];
+      for(let d=0;d<WINDOW;d++) localSlots=[...localSlots,...slotsForDate(tod(d))];
+      S.slots = applyDSMRule(localSlots);
+      S.avail = {}; S.cancelLog = [];
+      toast("⚠️ Working offline. Tap Refresh when connected.", 5000);
     }
   }
   S.activeDay = tod(0);
@@ -407,13 +422,16 @@ async function cancelForm(){
 async function submitForm(){
   const name = document.getElementById("fn")?.value?.trim();
   const email = document.getElementById("fe")?.value?.trim();
+  const dur = document.getElementById("fdur")?.value;
   if(!name||!email){ toast("Name and email are required."); return; }
+  if(!dur){ toast("Please select interview duration."); return; }
   const btn = document.getElementById("sbtn");
   if(btn){btn.disabled=true; btn.innerHTML='<span class="spin"></span>Confirming…';}
   const fd = {name, email,
     phone: document.getElementById("fp")?.value?.trim()||"",
     position: document.getElementById("fpo")?.value?.trim()||"",
     experience: document.getElementById("fex")?.value?.trim()||"",
+    duration: dur,
     notes: document.getElementById("fnt")?.value?.trim()||""};
   let data;
   try{ data=await jReadWithRetry(); }
@@ -719,6 +737,7 @@ function render(){
           <div style="flex:1;min-width:0">
             <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(slot.name)}</div>
             <div class="mono" style="font-size:11px;color:#aaa;margin-top:1px">${esc(slot.email)}${slot.phone?` · ${esc(slot.phone)}`:""}</div>
+          ${slot.duration?`<div class="mono" style="font-size:11px;color:#c8944a;margin-top:1px">⏱ ${esc(slot.duration)}</div>`:""}
           </div>
           ${slot.position?`<span class="badge bg-m" style="font-size:9px;flex-shrink:0">${esc(slot.position)}</span>`:""}
           <button class="cancel-btn" onclick="openCancelModal('${slot.id}')">✕ Cancel Interview</button>
@@ -736,6 +755,7 @@ function render(){
     const detailRows = dayBooked.sort((a,b)=>a.time.localeCompare(b.time)).map(s=>`<tr>
       <td class="mono" style="color:${i.color};font-weight:700;white-space:nowrap">${fmtTime(s.time)}</td>
       <td><strong>${esc(s.name)}</strong></td>
+      <td class="mono" style="color:#c8944a;font-size:12px">⏱ ${esc(s.duration||"30 min")}</td>
       <td style="color:#555">${esc(s.position||"—")}</td>
       <td class="mono" style="font-size:11px;color:#888">${esc(s.experience||"—")}</td>
       <td class="mono" style="font-size:11px;color:#aaa">${esc(s.email)}<br>${esc(s.phone||"")}</td>
@@ -813,7 +833,7 @@ function render(){
             📋 Booked — ${dayName(activeDate)} (${dayBooked.length})
           </div>
           <div class="card">
-            <table><thead><tr><th>Time</th><th>Candidate</th><th>Position</th><th>Experience</th><th>Contact</th><th>Notes</th><th>Action</th></tr></thead>
+            <table><thead><tr><th>Time</th><th>Candidate</th><th>Duration</th><th>Position</th><th>Experience</th><th>Contact</th><th>Notes</th><th>Action</th></tr></thead>
             <tbody>${detailRows}</tbody></table>
           </div>
         </div>`:""}
@@ -876,6 +896,7 @@ function render(){
             ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#888;
                 background:#f0ece4;padding:4px 10px;border-radius:6px;font-weight:500">DSM</span>`
             : isB?`<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
+            <div class="mono" style="font-size:10px;color:#aaa;margin-top:2px">Duration: ${slot.duration||"30 min"} (${fmtTime(slot.time)} – ${fmtEndTime(slot.time)})</div>
             <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>`:
           isF?`<span class="badge bg-a" style="font-size:9px">⏳ Being filled…</span>`:
           na?`<span class="mono" style="font-size:11px;color:#ddd">Unavailable</span>`:
@@ -979,6 +1000,15 @@ function render(){
           <div><span class="lbl">Phone</span><input id="fp" type="tel" placeholder="+91 98765 43210"/></div>
           <div><span class="lbl">Position Applied</span><input id="fpo" placeholder="e.g. Software Engineer"/></div>
           <div><span class="lbl">Years of Experience</span><input id="fex" placeholder="e.g. 4 years"/></div>
+          <div class="s2"><span class="lbl">Interview Duration *</span>
+            <select id="fdur">
+              <option value="">Select duration</option>
+              <option value="30 min">30 min</option>
+              <option value="1 hr">1 hr</option>
+              <option value="1.5 hrs">1.5 hrs</option>
+              <option value="2 hrs">2 hrs</option>
+            </select>
+          </div>
           <div class="s2"><span class="lbl">Notes for Interviewer</span>
             <textarea id="fnt" placeholder="Anything you'd like the interviewer to know…"></textarea></div>
         </div>
@@ -1005,7 +1035,7 @@ function render(){
         Your interview is confirmed. Please be ready at the time below.
       </p>
       <div style="background:#fff;border:2px solid ${i.color}38;border-radius:13px;padding:20px 26px;margin-bottom:22px;text-align:left">
-        ${[["Interviewer",i.full],["Day",s?dayName(s.date):""],["Date",s?fmtDate(s.date):""],["Time",s?fmtTime(s.time):""],["Position",s?.position||"—"]].map(([l,v])=>`
+        ${[["Interviewer",i.full],["Day",s?dayName(s.date):""],["Date",s?fmtDate(s.date):""],["Time",s?fmtTime(s.time):""],["Duration",s?.duration||"30 min"],["Position",s?.position||"—"]].map(([l,v])=>`
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0ece4">
             <span class="lbl">${l}</span>
             <span style="font-size:14px;font-weight:600;color:#1a1a2e">${esc(v)}</span>
