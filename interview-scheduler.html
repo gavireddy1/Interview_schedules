@@ -130,7 +130,12 @@ const WINDOW     = 7;
 function makeTimes(){ const t=[]; for(let h=9;h<20;h++){t.push(`${h}:00`);t.push(`${h}:30`);} return t; }
 const TIMES = makeTimes();
 function uid()  { return Math.random().toString(36).slice(2,10) }
-function tod(n=0){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10) }
+function tod(n=0){
+  // Use LOCAL date to avoid timezone issues (toISOString gives UTC which causes wrong date in IST after 6:30 PM)
+  const d=new Date(); d.setDate(d.getDate()+n);
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
 function dayName(ds){ const[y,m,d]=ds.split("-").map(Number); return DAYS[new Date(y,m-1,d).getDay()] }
 function fmtDate(ds){ const[y,m,d]=ds.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) }
 function fmtTime(t){ const[h,m]=t.split(":").map(Number); return `${h>12?h-12:h||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}` }
@@ -166,6 +171,7 @@ function slotsForDate(date){
 function addMissingDates(slots){
   const required = [];
   for(let i=0;i<WINDOW;i++) required.push(tod(i));
+  // Only look at dates that have slots — a date is "existing" if it has ANY slot
   const existing = new Set(slots.map(s=>s.date));
   let added = false;
   for(const date of required){
@@ -174,6 +180,8 @@ function addMissingDates(slots){
       added = true;
     }
   }
+  // NEVER remove any slots — just return what we have plus new ones
+  // Booked slots from any date are always preserved
   return { slots, added };
 }
 
@@ -186,26 +194,73 @@ function expireStale(slots){
   });
 }
 
-// FIX 2: Write lock — prevents concurrent writes that cause data loss
+// Write lock — prevents concurrent writes that cause data loss
 let writing = false;
 async function safeWrite(data){
-  // wait up to 5s for any ongoing write to finish
-  let waited = 0;
-  while(writing && waited < 5000){ await new Promise(r=>setTimeout(r,100)); waited+=100; }
+  if(writing) throw new Error("Write in progress — skipped");
+
+  // INTEGRITY CHECK: never write fewer booked slots than what is being saved
+  // Only check when we have existing data (not on fresh install)
+  const newBooked = (data.slots||[]).filter(s=>s.status==="booked").length;
+  const curBooked = S.slots.filter(s=>s.status==="booked").length;
+  if(curBooked > 0 && newBooked < curBooked){
+    throw new Error("Integrity check failed — write blocked");
+  }
+
   writing = true;
   try{
     const r = await fetch(`${JB}/b/${CFG.binId}`, {method:"PUT",
       headers:{"Content-Type":"application/json","X-Master-Key":CFG.key},
       body: JSON.stringify(data)});
-    if(!r.ok) throw new Error("Write failed");
-  } finally { writing = false; }
+    if(!r.ok) throw new Error(`Write failed: ${r.status}`);
+    saveCache(data); // update cache after successful write
+  } finally {
+    writing = false;
+  }
+}
+
+// Reliable read with retries — handles rate limits and network blips
+async function jReadWithRetry(maxAttempts=5){
+  let lastErr;
+  for(let i=0;i<maxAttempts;i++){
+    try{
+      return await jRead();
+    }catch(e){
+      lastErr = e;
+      if(i < maxAttempts-1){
+        // Exponential backoff: 1s, 2s, 4s, 8s
+        const wait = Math.min(1000 * Math.pow(2, i), 8000);
+        await new Promise(r=>setTimeout(r, wait));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+const CACHE_KEY = "iv_cache_v1";
+
+// Save to localStorage cache after every successful read
+function saveCache(data){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({data, ts:Date.now()})); }catch{}
+}
+
+// Load from localStorage cache (fallback when network fails)
+function loadCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    if(!raw) return null;
+    const {data} = JSON.parse(raw);
+    return data;
+  }catch{ return null; }
 }
 
 async function jRead(){
   const r = await fetch(`${JB}/b/${CFG.binId}/latest`,
     {headers:{"X-Master-Key":CFG.key,"X-Bin-Meta":"false"}});
   if(!r.ok) throw new Error(`Read failed (${r.status})`);
-  return await r.json();
+  const data = await r.json();
+  saveCache(data); // always cache on successful read
+  return data;
 }
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -222,25 +277,50 @@ let pollTimer = null;
 async function boot(){
   render();
   try{
-    const data = await jRead();
+    // Use retry logic — handles rate limits and temporary network issues
+    const data = await jReadWithRetry(5);
     let slots = expireStale(data.slots || []);
     const av = data.avail || {};
     const log = data.cancelLog || [];
 
-    // Apply DSM rule first, then add missing dates
-    slots = applyDSMRule(slots);
-    const { slots:synced } = addMissingDates(slots);
-    const dsmFixed = applyDSMRule(synced);
-    // Always save back so DSM is permanently stored in JSONBin for everyone
-    await safeWrite({ slots:dsmFixed, avail:av, cancelLog:log });
-    S.slots = dsmFixed;
+    // Check if DSM needs fixing
+    const needsDSMFix = slots.some(s => {
+      if(s.ivId!=="kk"||s.time!=="13:00"||s.status==="booked"||s.status==="dsm") return false;
+      const [y,m,d] = s.date.split("-").map(Number);
+      return new Date(y,m-1,d).getDay()>=1 && new Date(y,m-1,d).getDay()<=5;
+    });
+
+    // Check if new dates need to be added
+    const { slots:synced, added } = addMissingDates(slots);
+
+    // Only write if something actually changed
+    if(needsDSMFix || added){
+      const dsmFixed = applyDSMRule(synced);
+      try{
+        await safeWrite({ slots:dsmFixed, avail:av, cancelLog:log });
+        S.slots = dsmFixed;
+      }catch(writeErr){
+        // Write failed (race condition or integrity block) — just use local state
+        S.slots = dsmFixed;
+      }
+    } else {
+      S.slots = applyDSMRule(slots);
+    }
     S.avail = av;
     S.cancelLog = log;
   }catch(e){
-    let initSlots = [];
-    for(let d=0;d<WINDOW;d++) initSlots=[...initSlots,...slotsForDate(tod(d))];
-    try{ await safeWrite({slots:initSlots, avail:{}, cancelLog:[]}); }catch{}
-    S.slots = initSlots; S.avail = {}; S.cancelLog = [];
+    // Network failed — try localStorage cache first before giving up
+    const cached = loadCache();
+    if(cached && cached.slots && cached.slots.length > 0){
+      let slots = expireStale(cached.slots || []);
+      S.slots = applyDSMRule(slots);
+      S.avail = cached.avail || {};
+      S.cancelLog = cached.cancelLog || [];
+      // Silently loaded from cache — no alarming message
+    } else {
+      S.slots = []; S.avail = {}; S.cancelLog = [];
+      // Show gentle message only when there's truly no data
+    }
   }
   S.activeDay = tod(0);
   S.view = "landing";
@@ -251,16 +331,18 @@ async function boot(){
 function startPoll(){
   clearInterval(pollTimer);
   pollTimer = setInterval(async()=>{
+    if(document.hidden) return; // skip when tab is hidden
     if(["loading","form","pin"].includes(S.view)) return;
-    if(writing) return;
+    if(writing) return; // skip if a write is in progress
     try{
-      const data = await jRead();
-      let slots = data.slots || [];
+      // Single read per poll — no double reads to stay within rate limits
+      const data = await jRead(); // use jRead not jReadWithRetry in poll (fast fail is ok)
+      let slots = expireStale(data.slots || []);
       const now = Date.now();
 
-      // Check for stale "filling" slots that need cleanup
+      // Check and clean stale filling slots (no extra read needed)
       let hasStale = false;
-      const cleaned = slots.map(s=>{
+      slots = slots.map(s=>{
         if(s.status==="filling" && s.fillingAt && now - new Date(s.fillingAt).getTime() > 8*60000){
           hasStale = true;
           return {...s, status:"available", fillingAt:null, sid:null};
@@ -268,24 +350,34 @@ function startPoll(){
         return s;
       });
 
-      // If stale slots found, write cleanup to database so everyone sees freed slots
-      if(hasStale){
-        try{ await safeWrite({slots:cleaned, avail:data.avail||{}, cancelLog:data.cancelLog||[]}); }catch{}
-        S.slots = applyDSMRule(cleaned);
-      } else {
-        S.slots = applyDSMRule(slots);
-      }
+      S.slots = applyDSMRule(slots);
       S.avail = data.avail || {};
       S.cancelLog = data.cancelLog || [];
+
+      // Write stale cleanup silently — don't block render
+      if(hasStale && !writing){
+        safeWrite({slots:S.slots, avail:S.avail, cancelLog:S.cancelLog}).catch(()=>{});
+      }
+
       render();
-    }catch{}
-  }, 8000);
+    }catch(e){
+      // Network error during poll — silently use cache, no toast shown to user
+      const cached = loadCache();
+      if(cached){
+        S.slots = applyDSMRule(expireStale(cached.slots||[]));
+        S.avail = cached.avail||{};
+        S.cancelLog = cached.cancelLog||[];
+        render();
+      }
+      // If no cache either, just keep existing state — no error message shown
+    }
+  }, 20000);
 }
 
 // ─── CANDIDATE ACTIONS ────────────────────────────────────────────────────────
 async function goRegister(slotId){
   if(writing){ toast("⏳ Please wait a moment and try again."); return; }
-  let data; try{ data=await jRead(); }catch{ toast("⚠️ Network error. Try again."); return; }
+  let data; try{ data=await jReadWithRetry(); }catch{ toast("⚠️ Network error. Try again."); return; }
   let slots = expireStale(data.slots||[]);
   const af = slots.filter(s=>s.status==="filling").length;
   const slot = slots.find(s=>s.id===slotId);
@@ -293,7 +385,7 @@ async function goRegister(slotId){
   if(!slot||slot.status!=="available"){ toast("❌ Slot just taken. Pick another."); S.slots=slots; render(); return; }
   if(af>=MAX_FILL){ toast(`⏳ ${MAX_FILL} people filling form now. Please wait.`,5000); S.slots=slots; render(); return; }
   const upd = slots.map(s=>s.id===slotId?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
-  try{ await safeWrite({slots:upd, avail:S.avail, cancelLog:S.cancelLog}); }
+  try{ await safeWrite({slots:upd, avail:data.avail||S.avail, cancelLog:data.cancelLog||S.cancelLog}); }
   catch{ toast("⚠️ Network error. Try again."); return; }
   S.slots=upd; S.activeSlotId=slotId; S.view="form"; render();
 }
@@ -301,11 +393,11 @@ async function goRegister(slotId){
 async function cancelForm(){
   if(S.activeSlotId){
     try{
-      const data = await jRead();
+      const data = await jReadWithRetry();
       const upd = (data.slots||[]).map(s=>
         s.id===S.activeSlotId&&s.sid===SID
           ?{...s,status:"available",fillingAt:null,sid:null}:s);
-      await safeWrite({slots:upd, avail:S.avail, cancelLog:S.cancelLog});
+      await safeWrite({slots:upd, avail:data.avail||S.avail, cancelLog:data.cancelLog||S.cancelLog});
       S.slots=upd;
     }catch{}
   }
@@ -324,12 +416,12 @@ async function submitForm(){
     experience: document.getElementById("fex")?.value?.trim()||"",
     notes: document.getElementById("fnt")?.value?.trim()||""};
   let data;
-  try{ data=await jRead(); }
+  try{ data=await jReadWithRetry(); }
   catch{ toast("⚠️ Network error."); if(btn){btn.disabled=false;btn.textContent="Confirm →";} return; }
   const upd = (data.slots||[]).map(s=>
     s.id===S.activeSlotId
       ?{...s,status:"booked",...fd,filledAt:new Date().toISOString(),sid:null}:s);
-  try{ await safeWrite({slots:upd, avail:S.avail, cancelLog:S.cancelLog}); }
+  try{ await safeWrite({slots:upd, avail:data.avail||S.avail, cancelLog:data.cancelLog||S.cancelLog}); }
   catch{ toast("⚠️ Save failed."); if(btn){btn.disabled=false;btn.textContent="Confirm →";} return; }
   S.slots=upd; S.successSlot=upd.find(s=>s.id===S.activeSlotId);
   S.activeSlotId=null; S.view="success"; render();
@@ -345,8 +437,10 @@ function checkPin(){
 function toggleAvail(ivId, date, val){
   if(!S.avail[ivId]) S.avail[ivId]={};
   S.avail[ivId][date]=val;
-  safeWrite({slots:S.slots, avail:S.avail, cancelLog:S.cancelLog})
-    .catch(()=>toast("⚠️ Error saving availability."));
+  // Read fresh slots before writing to avoid overwriting new bookings
+  jReadWithRetry().then(fresh=>{
+    return safeWrite({slots:fresh.slots||S.slots, avail:S.avail, cancelLog:fresh.cancelLog||S.cancelLog});
+  }).catch(()=>toast("⚠️ Error saving availability."));
   render();
 }
 function getAvail(ivId, date){
@@ -396,7 +490,7 @@ async function confirmCancel(){
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span>Cancelling…'; }
   const adminName = iv(S.ivId)?.full || "Admin";
   let data;
-  try{ data=await jRead(); }
+  try{ data=await jReadWithRetry(); }
   catch{
     toast("⚠️ Network error. Please try again.");
     cancelInProgress=false; resetCancelBtn(); return;
@@ -417,7 +511,7 @@ async function confirmCancel(){
     return s;
   });
   const updLog = [...(data.cancelLog||[]), logEntry];
-  try{ await safeWrite({slots:updSlots, avail:S.avail, cancelLog:updLog}); }
+  try{ await safeWrite({slots:updSlots, avail:data.avail||S.avail, cancelLog:updLog}); }
   catch{
     toast("⚠️ Save failed. Please try again.");
     cancelInProgress=false; resetCancelBtn(); return;
@@ -930,12 +1024,23 @@ function setDay(d){ S.activeDay=d; render(); }
 
 async function loadData(){
   try{
-    const data=await jRead();
+    const data=await jReadWithRetry();
     S.slots=applyDSMRule(expireStale(data.slots||[]));
     S.avail=data.avail||{};
     S.cancelLog=data.cancelLog||[];
     render(); toast("✅ Refreshed.");
-  }catch{ toast("⚠️ Network error."); }
+  }catch{
+    // Try cache
+    const cached=loadCache();
+    if(cached){
+      S.slots=applyDSMRule(expireStale(cached.slots||[]));
+      S.avail=cached.avail||{};
+      S.cancelLog=cached.cancelLog||[];
+      render(); // silently loaded from cache
+    } else {
+      toast("⚠️ No connection. Please check internet and try again.");
+    }
+  }
 }
 
 let toastT;
