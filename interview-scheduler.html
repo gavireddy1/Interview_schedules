@@ -120,18 +120,18 @@ const IVS = [
   {id:"kk", name:"Kondareddy", full:"Gavireddy Kondareddy", ini:"GK", color:"#c8944a"},
   {id:"rr", name:"Ramireddy",  full:"Ramireddy",            ini:"RR", color:"#4a90c8"},
 ];
-const MAX_FILL   = 2;
-const DAYS       = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const SID        = Math.random().toString(36).slice(2,10);
-const JB         = "https://api.jsonbin.io/v3";
-const WINDOW     = 7;
+const MAX_FILL = 2;
+const DAYS     = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const SID      = Math.random().toString(36).slice(2,10);
+const JB       = "https://api.jsonbin.io/v3";
+const WINDOW   = 7;
+const CACHE_KEY= "iv_cache_v2";
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function makeTimes(){ const t=[]; for(let h=9;h<20;h++){t.push(`${h}:00`);t.push(`${h}:30`);} return t; }
 const TIMES = makeTimes();
-function uid()  { return Math.random().toString(36).slice(2,10) }
+function uid(){ return Math.random().toString(36).slice(2,10) }
 function tod(n=0){
-  // Use LOCAL date to avoid timezone issues (toISOString gives UTC which causes wrong date in IST after 6:30 PM)
   const d=new Date(); d.setDate(d.getDate()+n);
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${dd}`;
@@ -140,7 +140,6 @@ function dayName(ds){ const[y,m,d]=ds.split("-").map(Number); return DAYS[new Da
 function fmtDate(ds){ const[y,m,d]=ds.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) }
 function fmtTime(t){ const[h,m]=t.split(":").map(Number); return `${h>12?h-12:h||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}` }
 function fmtEndTime(t){
-  // Add 30 minutes to get end time
   const[h,m]=t.split(":").map(Number);
   const total=h*60+m+30;
   const eh=Math.floor(total/60), em=total%60;
@@ -150,15 +149,15 @@ function fmtAt(iso){ return iso?new Date(iso).toLocaleString("en-GB",{day:"2-dig
 function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
 function iv(id){ return IVS.find(i=>i.id===id)||IVS[0] }
 
-// Apply DSM rule: Kondareddy 1:00 PM is blocked Monday–Friday only
+// DSM rule: Kondareddy 1:00 PM blocked Monday–Friday
 function applyDSMRule(slots){
-  return slots.map(s => {
+  return slots.map(s=>{
     if(s.ivId==="kk" && s.time==="13:00" && s.status!=="booked"){
-      const [y,m,d] = s.date.split("-").map(Number);
-      const day = new Date(y,m-1,d).getDay(); // 0=Sun,1=Mon...5=Fri,6=Sat
-      const isWeekday = day>=1 && day<=5;
-      if(isWeekday) return {...s, status:"dsm", name:null, email:null, phone:null,
-        position:null, experience:null, notes:null, filledAt:null, fillingAt:null, sid:null};
+      const [y,m,d]=s.date.split("-").map(Number);
+      const day=new Date(y,m-1,d).getDay();
+      if(day>=1 && day<=5)
+        return {...s,status:"dsm",name:null,email:null,phone:null,
+          position:null,experience:null,notes:null,filledAt:null,fillingAt:null,sid:null};
     }
     return s;
   });
@@ -166,319 +165,266 @@ function applyDSMRule(slots){
 
 function slotsForDate(date){
   return IVS.flatMap(i=>TIMES.map(time=>({
-    id:uid(), ivId:i.id, date, time,
-    status:"available",
-    name:null, email:null, phone:null, position:null, experience:null, notes:null,
-    filledAt:null, fillingAt:null, sid:null
+    id:uid(),ivId:i.id,date,time,status:"available",duration:null,
+    name:null,email:null,phone:null,position:null,experience:null,notes:null,
+    filledAt:null,fillingAt:null,sid:null
   })));
 }
 
-// FIX 1: Safe rolling window — ONLY adds missing future dates, NEVER deletes booked data
-// No write during poll — only called on boot
+// Add slots for missing dates — NEVER removes existing slots
 function addMissingDates(slots){
-  const required = [];
+  const required=[];
   for(let i=0;i<WINDOW;i++) required.push(tod(i));
-  // Only look at dates that have slots — a date is "existing" if it has ANY slot
-  const existing = new Set(slots.map(s=>s.date));
-  let added = false;
+  const existing=new Set(slots.map(s=>s.date));
+  let added=false;
   for(const date of required){
     if(!existing.has(date)){
-      slots = [...slots, ...slotsForDate(date)];
-      added = true;
+      slots=[...slots,...slotsForDate(date)];
+      added=true;
     }
   }
-  // NEVER remove any slots — just return what we have plus new ones
-  // Booked slots from any date are always preserved
-  return { slots, added };
+  return {slots,added};
 }
 
+// Expire filling slots older than 8 minutes — display only, does NOT write
 function expireStale(slots){
-  const now = Date.now();
+  const now=Date.now();
   return slots.map(s=>{
-    if(s.status==="filling" && s.fillingAt && now - new Date(s.fillingAt).getTime() > 8*60000)
-      return {...s, status:"available", fillingAt:null, sid:null};
+    if(s.status==="filling"&&s.fillingAt&&now-new Date(s.fillingAt).getTime()>8*60000)
+      return {...s,status:"available",fillingAt:null,sid:null};
     return s;
   });
 }
 
-// Write lock — prevents concurrent writes that cause data loss
-let writing = false;
-async function safeWrite(data){
-  if(writing) throw new Error("Write in progress — skipped");
-
-  // INTEGRITY CHECK: only block if we'd lose more than 1 booking
-  const newBooked = (data.slots||[]).filter(s=>s.status==="booked").length;
-  const curBooked = S.slots.filter(s=>s.status==="booked").length;
-  if(curBooked > 2 && newBooked < curBooked - 1){
-    throw new Error("Integrity check failed — write blocked");
-  }
-
-  writing = true;
-  try{
-    const r = await fetch(`${JB}/b/${CFG.binId}`, {method:"PUT",
-      headers:{"Content-Type":"application/json","X-Master-Key":CFG.key},
-      body: JSON.stringify(data)});
-    if(!r.ok) throw new Error(`Write failed: ${r.status}`);
-    saveCache(data); // update cache after successful write
-  } finally {
-    writing = false;
-  }
-}
-
-// Reliable read with retries — handles rate limits and network blips
-async function jReadWithRetry(maxAttempts=5){
-  let lastErr;
-  for(let i=0;i<maxAttempts;i++){
-    try{
-      return await jRead();
-    }catch(e){
-      lastErr = e;
-      if(i < maxAttempts-1){
-        // Exponential backoff: 1s, 2s, 4s, 8s
-        const wait = Math.min(1000 * Math.pow(2, i), 8000);
-        await new Promise(r=>setTimeout(r, wait));
-      }
-    }
-  }
-  throw lastErr;
-}
-
-const CACHE_KEY = "iv_cache_v1";
-
-// Save to localStorage cache after every successful read
+// ─── CACHE ────────────────────────────────────────────────────────────────────
 function saveCache(data){
-  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({data, ts:Date.now()})); }catch{}
+  try{ localStorage.setItem(CACHE_KEY,JSON.stringify({data,ts:Date.now()})); }catch{}
 }
-
-// Load from localStorage cache (fallback when network fails)
 function loadCache(){
   try{
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw=localStorage.getItem(CACHE_KEY);
     if(!raw) return null;
-    const {data} = JSON.parse(raw);
-    return data;
+    return JSON.parse(raw).data;
   }catch{ return null; }
 }
 
+// ─── JSONBIN API ──────────────────────────────────────────────────────────────
 async function jRead(){
-  const r = await fetch(`${JB}/b/${CFG.binId}/latest`,
+  const r=await fetch(`${JB}/b/${CFG.binId}/latest`,
     {headers:{"X-Master-Key":CFG.key,"X-Bin-Meta":"false"}});
-  if(!r.ok) throw new Error(`Read failed (${r.status})`);
-  const data = await r.json();
-  saveCache(data); // always cache on successful read
+  if(!r.ok) throw new Error(`Read ${r.status}`);
+  const data=await r.json();
+  saveCache(data);
   return data;
 }
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-let S = {
-  view:"loading",
-  slots:[], avail:{}, cancelLog:[], // cancelLog stores history of cancelled bookings
-  ivId:null, activeDay:null,
-  activeSlotId:null, successSlot:null,
-  cancelTargetId:null, pinError:false,
-};
-let pollTimer = null;
-
-// ─── BOOT ─────────────────────────────────────────────────────────────────────
-async function boot(){
-  render();
-  try{
-    // Use retry logic — handles rate limits and temporary network issues
-    const data = await jReadWithRetry(5);
-    let slots = expireStale(data.slots || []);
-    const av = data.avail || {};
-    const log = data.cancelLog || [];
-
-    // Check if DSM needs fixing
-    const needsDSMFix = slots.some(s => {
-      if(s.ivId!=="kk"||s.time!=="13:00"||s.status==="booked"||s.status==="dsm") return false;
-      const [y,m,d] = s.date.split("-").map(Number);
-      return new Date(y,m-1,d).getDay()>=1 && new Date(y,m-1,d).getDay()<=5;
-    });
-
-    // Check if new dates need to be added
-    const { slots:synced, added } = addMissingDates(slots);
-
-    // Only write if something actually changed
-    if(needsDSMFix || added){
-      const dsmFixed = applyDSMRule(synced);
-      try{
-        await safeWrite({ slots:dsmFixed, avail:av, cancelLog:log });
-        S.slots = dsmFixed;
-      }catch(writeErr){
-        // Write failed (race condition or integrity block) — just use local state
-        S.slots = dsmFixed;
-      }
-    } else {
-      S.slots = applyDSMRule(slots);
-    }
-        // Safety net: if slots still empty after all processing, generate local ones
-    if(S.slots.length === 0){
-      let ls=[];for(let d=0;d<WINDOW;d++) ls=[...ls,...slotsForDate(tod(d))];
-      S.slots=applyDSMRule(ls);
-    }
-    S.avail = av;
-    S.cancelLog = log;
-  }catch(e){
-    // Network failed — try localStorage cache first before giving up
-    const cached = loadCache();
-    if(cached && cached.slots && cached.slots.length > 0){
-      let slots = expireStale(cached.slots || []);
-      S.slots = applyDSMRule(slots);
-      S.avail = cached.avail || {};
-      S.cancelLog = cached.cancelLog || [];
-      // Silently loaded from cache — no alarming message
-    } else {
-      // No cache and no network — generate local slots so UI always shows something
-      let localSlots = [];
-      for(let d=0;d<WINDOW;d++) localSlots=[...localSlots,...slotsForDate(tod(d))];
-      S.slots = applyDSMRule(localSlots);
-      S.avail = {}; S.cancelLog = [];
-      toast("⚠️ Working offline. Tap Refresh when connected.", 5000);
+async function jReadWithRetry(n=4){
+  let err;
+  for(let i=0;i<n;i++){
+    try{ return await jRead(); }
+    catch(e){
+      err=e;
+      if(i<n-1) await new Promise(r=>setTimeout(r,Math.min(1000*Math.pow(2,i),6000)));
     }
   }
-  S.activeDay = tod(0);
-  S.view = "landing";
+  throw err;
+}
+
+// THE ONLY FUNCTION THAT WRITES TO JSONBIN
+// Rule: ALWAYS read fresh data first, merge the change, then write
+// This prevents EVERY race condition
+let writing=false;
+async function atomicWrite(changeFn){
+  if(writing) throw new Error("busy");
+  writing=true;
+  try{
+    // Get absolute latest data right before writing
+    const fresh=await jRead();
+    // Apply the change to fresh data
+    const updated=changeFn(fresh);
+    // Write back
+    const r=await fetch(`${JB}/b/${CFG.binId}`,{method:"PUT",
+      headers:{"Content-Type":"application/json","X-Master-Key":CFG.key},
+      body:JSON.stringify(updated)});
+    if(!r.ok) throw new Error(`Write ${r.status}`);
+    saveCache(updated);
+    return updated;
+  } finally {
+    writing=false;
+  }
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let S={
+  view:"loading",
+  slots:[],avail:{},cancelLog:[],
+  ivId:null,activeDay:null,
+  activeSlotId:null,successSlot:null,
+  cancelTargetId:null,pinError:false,
+};
+let pollTimer=null;
+
+// ─── BOOT — READ ONLY, NEVER WRITES ──────────────────────────────────────────
+async function boot(){
+  render();
+  let data=null;
+  try{ data=await jReadWithRetry(4); }
+  catch(e){
+    // Network failed — load from cache
+    data=loadCache();
+  }
+  if(data && data.slots && data.slots.length>0){
+    let slots=expireStale(data.slots);
+    // Add missing dates LOCALLY only — no write to JSONBin
+    const {slots:withDates}=addMissingDates(slots);
+    S.slots=applyDSMRule(withDates);
+    S.avail=data.avail||{};
+    S.cancelLog=data.cancelLog||[];
+  } else {
+    // Nothing loaded — show empty slots locally for display
+    let ls=[];
+    for(let d=0;d<WINDOW;d++) ls=[...ls,...slotsForDate(tod(d))];
+    S.slots=applyDSMRule(ls);
+    S.avail={}; S.cancelLog=[];
+    if(!data) toast("⚠️ Working offline. Tap Refresh when connected.",5000);
+  }
+  S.activeDay=tod(0);
+  S.view="landing";
   render();
   startPoll();
 }
 
+// ─── POLL — READ ONLY, NEVER WRITES ──────────────────────────────────────────
 function startPoll(){
   clearInterval(pollTimer);
-  pollTimer = setInterval(async()=>{
-    if(document.hidden) return; // skip when tab is hidden
+  pollTimer=setInterval(async()=>{
+    if(document.hidden) return;
     if(["loading","form","pin"].includes(S.view)) return;
-    if(writing) return; // skip if a write is in progress
+    if(writing) return;
     try{
-      // Single read per poll — no double reads to stay within rate limits
-      const data = await jRead(); // use jRead not jReadWithRetry in poll (fast fail is ok)
-      let slots = expireStale(data.slots || []);
-      const now = Date.now();
-
-      // Check and clean stale filling slots (no extra read needed)
-      let hasStale = false;
-      slots = slots.map(s=>{
-        if(s.status==="filling" && s.fillingAt && now - new Date(s.fillingAt).getTime() > 8*60000){
-          hasStale = true;
-          return {...s, status:"available", fillingAt:null, sid:null};
-        }
-        return s;
-      });
-
-      S.slots = applyDSMRule(slots);
-      S.avail = data.avail || {};
-      S.cancelLog = data.cancelLog || [];
-
-      // Write stale cleanup silently — don't block render
-      if(hasStale && !writing){
-        safeWrite({slots:S.slots, avail:S.avail, cancelLog:S.cancelLog}).catch(()=>{});
-      }
-
+      const data=await jRead();
+      let slots=expireStale(data.slots||[]);
+      const {slots:withDates}=addMissingDates(slots);
+      S.slots=applyDSMRule(withDates);
+      S.avail=data.avail||{};
+      S.cancelLog=data.cancelLog||[];
       render();
-    }catch(e){
-      // Network error during poll — silently use cache, no toast shown to user
-      const cached = loadCache();
-      if(cached){
-        S.slots = applyDSMRule(expireStale(cached.slots||[]));
-        S.avail = cached.avail||{};
-        S.cancelLog = cached.cancelLog||[];
-        render();
-      }
-      // If no cache either, just keep existing state — no error message shown
+    }catch{
+      // Silent fail — keep showing existing state
     }
-  }, 20000);
+  },20000);
 }
 
 // ─── CANDIDATE ACTIONS ────────────────────────────────────────────────────────
 async function goRegister(slotId){
-  if(writing){ toast("⏳ Please wait a moment and try again."); return; }
-  let data; try{ data=await jReadWithRetry(); }catch{ toast("⚠️ Network error. Try again."); return; }
-  let slots = expireStale(data.slots||[]);
-  const af = slots.filter(s=>s.status==="filling").length;
-  const slot = slots.find(s=>s.id===slotId);
-  if(!slot||slot.status==="dsm"){ toast("❌ This slot is reserved."); S.slots=slots; render(); return; }
-  if(!slot||slot.status!=="available"){ toast("❌ Slot just taken. Pick another."); S.slots=slots; render(); return; }
-  if(af>=MAX_FILL){ toast(`⏳ ${MAX_FILL} people filling form now. Please wait.`,5000); S.slots=slots; render(); return; }
-  const upd = slots.map(s=>s.id===slotId?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
-  try{ await safeWrite({slots:upd, avail:data.avail||S.avail, cancelLog:data.cancelLog||S.cancelLog}); }
-  catch{ toast("⚠️ Network error. Try again."); return; }
-  S.slots=upd; S.activeSlotId=slotId; S.view="form"; render();
+  if(writing){ toast("⏳ Please wait a moment."); return; }
+  try{
+    const result=await atomicWrite(fresh=>{
+      const slots=expireStale(fresh.slots||[]);
+      const slot=slots.find(s=>s.id===slotId);
+      if(!slot||slot.status==="dsm") throw new Error("reserved");
+      if(!slot||slot.status!=="available") throw new Error("taken");
+      const upd=slots.map(s=>s.id===slotId
+        ?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
+      return {slots:upd,avail:fresh.avail||{},cancelLog:fresh.cancelLog||[]};
+    });
+    S.slots=applyDSMRule(expireStale(result.slots));
+    S.avail=result.avail; S.cancelLog=result.cancelLog;
+    S.activeSlotId=slotId; S.view="form"; render();
+  }catch(e){
+    if(e.message==="reserved") toast("❌ This slot is reserved.");
+    else if(e.message==="taken") toast("❌ Slot just taken. Pick another.");
+
+    else toast("⚠️ Network error. Try again.");
+    // Refresh local state
+    try{ const d=await jRead(); S.slots=applyDSMRule(expireStale(d.slots||[])); render(); }catch{}
+  }
 }
 
 async function cancelForm(){
   if(S.activeSlotId){
     try{
-      const data = await jReadWithRetry();
-      const upd = (data.slots||[]).map(s=>
-        s.id===S.activeSlotId&&s.sid===SID
-          ?{...s,status:"available",fillingAt:null,sid:null}:s);
-      await safeWrite({slots:upd, avail:data.avail||S.avail, cancelLog:data.cancelLog||S.cancelLog});
-      S.slots=upd;
+      const result=await atomicWrite(fresh=>({
+        slots:(fresh.slots||[]).map(s=>
+          s.id===S.activeSlotId&&s.sid===SID
+            ?{...s,status:"available",fillingAt:null,sid:null}:s),
+        avail:fresh.avail||{},cancelLog:fresh.cancelLog||[]
+      }));
+      S.slots=applyDSMRule(expireStale(result.slots));
     }catch{}
   }
   S.activeSlotId=null; S.view="candidate"; render();
 }
 
 async function submitForm(){
-  const name = document.getElementById("fn")?.value?.trim();
-  const email = document.getElementById("fe")?.value?.trim();
-  const dur = document.getElementById("fdur")?.value;
+  const name=document.getElementById("fn")?.value?.trim();
+  const email=document.getElementById("fe")?.value?.trim();
+  const dur=document.getElementById("fdur")?.value;
   if(!name||!email){ toast("Name and email are required."); return; }
   if(!dur){ toast("Please select interview duration."); return; }
-  const btn = document.getElementById("sbtn");
-  if(btn){btn.disabled=true; btn.innerHTML='<span class="spin"></span>Confirming…';}
-  const fd = {name, email,
-    phone: document.getElementById("fp")?.value?.trim()||"",
-    position: document.getElementById("fpo")?.value?.trim()||"",
-    experience: document.getElementById("fex")?.value?.trim()||"",
-    duration: dur,
-    notes: document.getElementById("fnt")?.value?.trim()||""};
-  let data;
-  try{ data=await jReadWithRetry(); }
-  catch{ toast("⚠️ Network error."); if(btn){btn.disabled=false;btn.textContent="Confirm →";} return; }
-  const upd = (data.slots||[]).map(s=>
-    s.id===S.activeSlotId
-      ?{...s,status:"booked",...fd,filledAt:new Date().toISOString(),sid:null}:s);
-  try{ await safeWrite({slots:upd, avail:data.avail||S.avail, cancelLog:data.cancelLog||S.cancelLog}); }
-  catch{ toast("⚠️ Save failed."); if(btn){btn.disabled=false;btn.textContent="Confirm →";} return; }
-  S.slots=upd; S.successSlot=upd.find(s=>s.id===S.activeSlotId);
-  S.activeSlotId=null; S.view="success"; render();
+  const btn=document.getElementById("sbtn");
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>Confirming…';}
+  const fd={name,email,
+    phone:document.getElementById("fp")?.value?.trim()||"",
+    position:document.getElementById("fpo")?.value?.trim()||"",
+    experience:document.getElementById("fex")?.value?.trim()||"",
+    duration:dur,
+    notes:document.getElementById("fnt")?.value?.trim()||""};
+  try{
+    const result=await atomicWrite(fresh=>({
+      slots:(fresh.slots||[]).map(s=>s.id===S.activeSlotId
+        ?{...s,status:"booked",...fd,filledAt:new Date().toISOString(),sid:null}:s),
+      avail:fresh.avail||{},cancelLog:fresh.cancelLog||[]
+    }));
+    S.slots=applyDSMRule(expireStale(result.slots));
+    S.avail=result.avail; S.cancelLog=result.cancelLog;
+    S.successSlot=S.slots.find(s=>s.id===S.activeSlotId);
+    S.activeSlotId=null; S.view="success"; render();
+  }catch{
+    toast("⚠️ Save failed. Please try again.");
+    if(btn){btn.disabled=false;btn.textContent="Confirm Registration →";}
+  }
 }
 
 // ─── ADMIN ACTIONS ────────────────────────────────────────────────────────────
 function checkPin(){
-  const pin = document.getElementById("pin-input")?.value?.trim();
+  const pin=document.getElementById("pin-input")?.value?.trim();
   if(pin===ADMIN_PIN){ S.pinError=false; S.view="iv-select"; render(); }
   else{ S.pinError=true; render(); }
 }
 
-function toggleAvail(ivId, date, val){
+function toggleAvail(ivId,date,val){
   if(!S.avail[ivId]) S.avail[ivId]={};
   S.avail[ivId][date]=val;
-  // Read fresh slots before writing to avoid overwriting new bookings
-  jReadWithRetry().then(fresh=>{
-    return safeWrite({slots:fresh.slots||S.slots, avail:S.avail, cancelLog:fresh.cancelLog||S.cancelLog});
+  const localAvail=JSON.parse(JSON.stringify(S.avail));
+  atomicWrite(fresh=>({
+    slots:fresh.slots||[],
+    avail:localAvail,
+    cancelLog:fresh.cancelLog||[]
+  })).then(result=>{
+    S.avail=result.avail;
   }).catch(()=>toast("⚠️ Error saving availability."));
   render();
 }
-function getAvail(ivId, date){
+
+function getAvail(ivId,date){
   if(!S.avail[ivId]) return true;
-  return S.avail[ivId][date]!==undefined ? S.avail[ivId][date] : true;
+  return S.avail[ivId][date]!==undefined?S.avail[ivId][date]:true;
 }
 
-let cancelInProgress = false;
+let cancelInProgress=false;
 
 function resetCancelBtn(){
-  const btn = document.getElementById("confirm-cancel-btn");
-  if(btn){ btn.disabled=false; btn.innerHTML="Yes, Cancel &amp; Free Slot"; btn.style.opacity="1"; }
+  const btn=document.getElementById("confirm-cancel-btn");
+  if(btn){btn.disabled=false;btn.innerHTML="Yes, Cancel &amp; Free Slot";btn.style.opacity="1";}
 }
 
 function openCancelModal(slotId){
-  const slot = S.slots.find(s=>s.id===slotId);
+  const slot=S.slots.find(s=>s.id===slotId);
   if(!slot){ toast("Slot not found."); return; }
-  S.cancelTargetId = slotId;
-  cancelInProgress = false;
-  writing = false;
+  S.cancelTargetId=slotId;
+  cancelInProgress=false;
+  writing=false;
   resetCancelBtn();
   document.getElementById("modal-info").innerHTML=`
     <div style="font-weight:700;font-size:15px;color:#1a1a2e;margin-bottom:4px">${esc(slot.name)}</div>
@@ -492,63 +438,84 @@ function openCancelModal(slotId){
 
 function closeModal(){
   document.getElementById("cancel-modal").style.display="none";
-  S.cancelTargetId = null;
-  cancelInProgress = false;
-  resetCancelBtn();
+  S.cancelTargetId=null; cancelInProgress=false; resetCancelBtn();
 }
 
 function handleModalBgClick(e){ if(e.target===e.currentTarget) closeModal(); }
 
 async function confirmCancel(){
   if(cancelInProgress) return;
-  const slotId = S.cancelTargetId;
+  const slotId=S.cancelTargetId;
   if(!slotId){ closeModal(); return; }
-  cancelInProgress = true;
-  const btn = document.getElementById("confirm-cancel-btn");
-  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span>Cancelling…'; }
-  const adminName = iv(S.ivId)?.full || "Admin";
-  let data;
-  try{ data=await jReadWithRetry(); }
-  catch{
-    toast("⚠️ Network error. Please try again.");
-    cancelInProgress=false; resetCancelBtn(); return;
+  cancelInProgress=true;
+  const btn=document.getElementById("confirm-cancel-btn");
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>Cancelling…';}
+  const adminName=iv(S.ivId)?.full||"Admin";
+  try{
+    const result=await atomicWrite(fresh=>{
+      const bookedSlot=(fresh.slots||[]).find(s=>s.id===slotId);
+      if(!bookedSlot) throw new Error("notfound");
+      const logEntry={
+        id:uid(),slotId:bookedSlot.id,ivId:bookedSlot.ivId,
+        date:bookedSlot.date,time:bookedSlot.time,
+        name:bookedSlot.name,email:bookedSlot.email,
+        phone:bookedSlot.phone||"",position:bookedSlot.position||"",
+        cancelledAt:new Date().toISOString(),cancelledBy:adminName
+      };
+      const updSlots=(fresh.slots||[]).map(s=>s.id===slotId
+        ?{...s,status:"available",name:null,email:null,phone:null,
+            position:null,experience:null,notes:null,
+            filledAt:null,fillingAt:null,sid:null,duration:null}:s);
+      return {slots:updSlots,avail:fresh.avail||{},cancelLog:[...(fresh.cancelLog||[]),logEntry]};
+    });
+    S.slots=applyDSMRule(expireStale(result.slots));
+    S.cancelLog=result.cancelLog;
+    closeModal();
+    toast("✅ Interview cancelled. Slot is now free for others to book.");
+    render();
+  }catch(e){
+    if(e.message==="notfound") toast("Slot not found — may already be cancelled.");
+    else toast("⚠️ Save failed. Please try again.");
+    cancelInProgress=false; resetCancelBtn();
   }
-  const bookedSlot = (data.slots||[]).find(s=>s.id===slotId);
-  if(!bookedSlot){ toast("Slot not found."); closeModal(); return; }
-  const logEntry = {
-    id:uid(), slotId:bookedSlot.id, ivId:bookedSlot.ivId,
-    date:bookedSlot.date, time:bookedSlot.time,
-    name:bookedSlot.name, email:bookedSlot.email,
-    phone:bookedSlot.phone||"", position:bookedSlot.position||"",
-    cancelledAt:new Date().toISOString(), cancelledBy:adminName,
-  };
-  // Free only the cancelled slot — don't touch other active filling sessions
-  const updSlots = (data.slots||[]).map(s=>{
-    if(s.id===slotId) return {...s, status:"available", name:null, email:null, phone:null,
-        position:null, experience:null, notes:null, filledAt:null, fillingAt:null, sid:null};
-    return s;
-  });
-  const updLog = [...(data.cancelLog||[]), logEntry];
-  try{ await safeWrite({slots:updSlots, avail:data.avail||S.avail, cancelLog:updLog}); }
-  catch{
-    toast("⚠️ Save failed. Please try again.");
-    cancelInProgress=false; resetCancelBtn(); return;
-  }
-  S.slots=updSlots; S.cancelLog=updLog;
-  closeModal();
-  toast("✅ Interview cancelled. Slot is now free for others to book.");
-  render();
 }
 
 window.addEventListener("beforeunload",()=>{
   if(!S.activeSlotId) return;
   try{
-    const upd = S.slots.map(s=>s.id===S.activeSlotId&&s.sid===SID
+    const upd=S.slots.map(s=>s.id===S.activeSlotId&&s.sid===SID
       ?{...s,status:"available",fillingAt:null,sid:null}:s);
     navigator.sendBeacon&&navigator.sendBeacon(`${JB}/b/${CFG.binId}`,
-      new Blob([JSON.stringify({slots:upd,avail:S.avail,cancelLog:S.cancelLog})],{type:"application/json"}));
+      new Blob([JSON.stringify({slots:upd,avail:S.avail,cancelLog:S.cancelLog})],
+      {type:"application/json"}));
   }catch{}
 });
+
+async function loadData(){
+  try{
+    const data=await jReadWithRetry();
+    let slots=expireStale(data.slots||[]);
+    const {slots:withDates}=addMissingDates(slots);
+    S.slots=applyDSMRule(withDates);
+    S.avail=data.avail||{};
+    S.cancelLog=data.cancelLog||[];
+    render(); toast("✅ Refreshed.");
+  }catch{
+    toast("⚠️ No connection. Check internet and try again.");
+  }
+}
+
+function goLanding(){ S.view="landing"; S.activeSlotId=null; render(); }
+function setDay(d){ S.activeDay=d; render(); }
+
+let toastT;
+function toast(msg,d=3500){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),d);
+}
+
+boot();
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 function render(){
@@ -939,11 +906,7 @@ function render(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px">
         <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em">📅 Interview Slots</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <span style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;
-            background:${af>0?"#fef8ed":"#edf7f2"};border:1px solid ${af>0?"#e8c878":"#b0dfc0"};
-            font-family:'DM Mono',monospace;font-size:11px;color:${af>0?"#8a5a10":"#1e6e44"}">
-            <span style="width:6px;height:6px;border-radius:50%;background:${af>0?"#e8c878":"#6ec89a"};display:inline-block"></span>
-            ${af}/${MAX_FILL} filling now</span>
+
           <button class="btn btn-ghost" onclick="loadData()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>
         </div>
       </div>
@@ -1049,8 +1012,6 @@ function render(){
   }
 }
 
-function goLanding(){ S.view="landing"; S.activeSlotId=null; render(); }
-function setDay(d){ S.activeDay=d; render(); }
 
 async function loadData(){
   try{
@@ -1073,14 +1034,7 @@ async function loadData(){
   }
 }
 
-let toastT;
-function toast(msg,d=3500){
-  const t=document.getElementById("toast");
-  t.textContent=msg; t.classList.add("on");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),d);
-}
 
-boot();
 </script>
 </body>
 </html>
