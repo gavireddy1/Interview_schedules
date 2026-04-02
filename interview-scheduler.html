@@ -9,29 +9,33 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Outfit',sans-serif;background:#f4f3ef;color:#1a1a2e;min-height:100vh}
 .bg{position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 60% 40% at 5% 0%,rgba(200,148,74,0.1) 0%,transparent 55%),
-             radial-gradient(ellipse 50% 40% at 95% 100%,rgba(106,180,232,0.08) 0%,transparent 55%)}
+  background:radial-gradient(ellipse 60% 40% at 5% 0%,rgba(200,148,74,.1) 0%,transparent 55%),
+             radial-gradient(ellipse 50% 40% at 95% 100%,rgba(106,180,232,.08) 0%,transparent 55%)}
 .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:28px 18px 80px}
 input,select,textarea{width:100%;background:#fff;border:1.5px solid #e0dbd0;border-radius:9px;
-  padding:10px 13px;font-family:'Outfit',sans-serif;font-size:14px;color:#1a1a2e;outline:none;transition:border-color .2s}
+  padding:10px 13px;font-family:'Outfit',sans-serif;font-size:14px;color:#1a1a2e;
+  outline:none;transition:border-color .2s}
 input:focus,select:focus,textarea:focus{border-color:#c8944a;box-shadow:0 0 0 3px rgba(200,148,74,.1)}
 textarea{resize:vertical;min-height:68px}
 .btn{padding:10px 20px;border:none;border-radius:9px;font-family:'Outfit',sans-serif;
   font-weight:600;font-size:13px;cursor:pointer;transition:all .18s}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-dark{background:#1a1a2e;color:#fff}.btn-dark:hover:not(:disabled){background:#282840}
 .btn-amber{background:#c8944a;color:#fff}.btn-amber:hover:not(:disabled){background:#b07a38}
+.btn-dark{background:#1a1a2e;color:#fff}.btn-dark:hover:not(:disabled){background:#282840}
 .btn-red{background:#e53e3e;color:#fff}.btn-red:hover:not(:disabled){background:#c53030}
-.btn-ghost{background:#fff;border:1.5px solid #ddd;color:#666}.btn-ghost:hover:not(:disabled){border-color:#999;color:#333}
+.btn-ghost{background:#fff;border:1.5px solid #ddd;color:#555}
+.btn-ghost:hover:not(:disabled){border-color:#999;color:#222}
 .mono{font-family:'DM Mono',monospace}
-.lbl{font-family:'DM Mono',monospace;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.13em;display:block;margin-bottom:4px}
+.lbl{font-family:'DM Mono',monospace;font-size:10px;color:#999;text-transform:uppercase;
+  letter-spacing:.13em;display:block;margin-bottom:4px}
 .card{background:#fff;border:1px solid #e8e2d8;border-radius:14px;overflow:hidden}
-.view{animation:fi .22s ease}
-@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.view{animation:fi .2s ease}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 table{width:100%;border-collapse:collapse}
-th{font-family:'DM Mono',monospace;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.1em;
-   padding:11px 15px;text-align:left;font-weight:500;background:#faf8f4;white-space:nowrap}
-td{padding:10px 15px;font-size:13px;border-top:1px solid #ede8e0;vertical-align:middle}
+th{font-family:'DM Mono',monospace;font-size:10px;color:#999;text-transform:uppercase;
+   letter-spacing:.1em;padding:11px 14px;text-align:left;font-weight:500;
+   background:#faf8f4;white-space:nowrap}
+td{padding:10px 14px;font-size:13px;border-top:1px solid #ede8e0;vertical-align:middle}
 .badge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:3px 10px;
   font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.04em;white-space:nowrap}
 .bg-g{background:#edf7f2;color:#1e6e44;border:1px solid #b0dfc0}
@@ -39,9 +43,10 @@ td{padding:10px 15px;font-size:13px;border-top:1px solid #ede8e0;vertical-align:
 .bg-a{background:#fef8ed;color:#8a5a10;border:1px solid #e8c878}
 .bg-b{background:#eef5ff;color:#1a4a90;border:1px solid #90b8f0}
 .bg-m{background:#f5f0ff;color:#5a1a90;border:1px solid #c090f0}
-.toast{position:fixed;bottom:24px;right:20px;background:#1a1a2e;color:#fff;border-radius:11px;
-  padding:12px 18px;font-size:13px;box-shadow:0 6px 28px rgba(0,0,0,.18);z-index:9999;
-  max-width:320px;line-height:1.5;opacity:0;transform:translateY(10px);transition:all .28s;pointer-events:none}
+.toast{position:fixed;bottom:24px;right:20px;background:#1a1a2e;color:#fff;
+  border-radius:11px;padding:12px 18px;font-size:13px;
+  box-shadow:0 6px 28px rgba(0,0,0,.2);z-index:9999;max-width:320px;line-height:1.5;
+  opacity:0;transform:translateY(10px);transition:all .28s;pointer-events:none}
 .toast.on{opacity:1;transform:translateY(0)}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .s2{grid-column:1/-1}
@@ -50,59 +55,65 @@ td{padding:10px 15px;font-size:13px;border-top:1px solid #ede8e0;vertical-align:
 .tog input{opacity:0;width:0;height:0}
 .sli{position:absolute;inset:0;background:#ddd;border-radius:24px;cursor:pointer;transition:.25s}
 .sli:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;
-  background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 input:checked+.sli{background:#6ec89a}
 input:checked+.sli:before{transform:translateX(20px)}
-.tl-row{display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid #f0ece4}
+.tl-row{display:grid;grid-template-columns:88px 1fr;border-bottom:1px solid #f0ece4}
 .tl-row:last-child{border-bottom:none}
-.tl-time{padding:12px 14px;font-family:'DM Mono',monospace;font-size:12px;
-  border-right:1px solid #f0ece4;background:#faf8f4;display:flex;align-items:center;color:#bbb}
-.tl-cell{padding:10px 14px;display:flex;align-items:center}
-.dtab{padding:7px 14px;border:1.5px solid #e0dbd0;border-radius:8px;background:#fff;
-  font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;text-align:center}
+.tl-time{padding:11px 13px;font-family:'DM Mono',monospace;font-size:12px;color:#bbb;
+  border-right:1px solid #f0ece4;background:#faf8f4;display:flex;align-items:center}
+.tl-cell{padding:9px 13px;display:flex;align-items:center}
+.dtab{padding:6px 12px;border:1.5px solid #e0dbd0;border-radius:8px;background:#fff;
+  font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;
+  transition:all .15s;white-space:nowrap;text-align:center}
 .dtab:hover{border-color:#c8944a;color:#c8944a}
 .dtab.act{background:#c8944a;border-color:#c8944a;color:#fff}
-.stat-box{background:#fff;border:1px solid #e8e2d8;border-radius:12px;padding:14px 16px;text-align:center;min-width:80px}
-.stat-num{font-family:'Playfair Display',serif;font-size:1.8rem;line-height:1}
-.stat-lbl{font-family:'DM Mono',monospace;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
-.lcard{background:#fff;border:2px solid #e8e2d8;border-radius:16px;padding:28px 24px;
+.stat-box{background:#fff;border:1px solid #e8e2d8;border-radius:12px;
+  padding:14px 16px;text-align:center;min-width:76px}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.7rem;line-height:1}
+.stat-lbl{font-family:'DM Mono',monospace;font-size:10px;color:#999;
+  text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+.lcard{background:#fff;border:2px solid #e8e2d8;border-radius:16px;padding:26px 22px;
   cursor:pointer;text-align:left;transition:all .18s;width:100%}
-.lcard:hover{border-color:#c8944a;transform:translateY(-2px);box-shadow:0 8px 28px rgba(200,148,74,.12)}
-/* Cancel modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;
-  align-items:center;justify-content:center;padding:20px}
-.modal{background:#fff;border-radius:16px;padding:28px;max-width:420px;width:100%;
-  box-shadow:0 16px 60px rgba(0,0,0,.3)}
-.cancel-btn{padding:6px 12px;border:1.5px solid #f5c0c0;border-radius:7px;background:#fff;
-  color:#c0392b;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.lcard:hover{border-color:#c8944a;transform:translateY(-2px);
+  box-shadow:0 8px 28px rgba(200,148,74,.12)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:16px;padding:26px;max-width:400px;width:100%;
+  box-shadow:0 16px 60px rgba(0,0,0,.28)}
+.cancel-btn{padding:5px 10px;border:1.5px solid #f5c0c0;border-radius:7px;background:#fff;
+  color:#c0392b;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;
+  transition:all .15s;white-space:nowrap}
 .cancel-btn:hover{background:#fff0f0;border-color:#e53e3e}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);
-  border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;
+  vertical-align:middle;margin-right:5px}
 @keyframes sp{to{transform:rotate(360deg)}}
-.live-pill{display:inline-flex;align-items:center;gap:6px;background:#edf7f2;border:1px solid #b0dfc0;
-  border-radius:20px;padding:4px 12px;font-family:'DM Mono',monospace;font-size:11px;color:#1e6e44}
-.pin-box{background:#fff;border:1.5px solid #e0dbd0;border-radius:18px;padding:36px 32px;
-  max-width:360px;margin:60px auto 0;text-align:center}
+.live-pill{display:inline-flex;align-items:center;gap:6px;background:#edf7f2;
+  border:1px solid #b0dfc0;border-radius:20px;padding:4px 12px;
+  font-family:'DM Mono',monospace;font-size:11px;color:#1e6e44}
+.pin-box{background:#fff;border:1.5px solid #e0dbd0;border-radius:18px;
+  padding:34px 30px;max-width:340px;margin:60px auto 0;text-align:center}
 </style>
 </head>
 <body>
 <div class="bg"></div>
 <div class="wrap" id="app"></div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast-el"></div>
 
-<!-- Cancel Modal — outside app div so it never gets wiped by render() -->
-<div class="modal-bg" id="cancel-modal" style="display:none" onclick="handleModalBgClick(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div style="font-size:32px;text-align:center;margin-bottom:12px">⚠️</div>
-    <h3 style="font-family:'Playfair Display',serif;font-size:1.3rem;text-align:center;margin-bottom:8px">Cancel Interview?</h3>
+<!-- Cancel Modal -->
+<div class="modal-bg" id="cancel-modal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div style="font-size:30px;text-align:center;margin-bottom:10px">⚠️</div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;text-align:center;margin-bottom:6px">Cancel Interview?</h3>
     <p style="font-size:13px;color:#888;text-align:center;line-height:1.6;margin-bottom:8px">
-      The slot will be freed up and available for other candidates to book again.
+      This will free the slot so another candidate can register.
     </p>
-    <div id="modal-info" style="background:#fff5f5;border:1px solid #f5c0c0;border-radius:10px;
-      padding:14px 18px;margin-bottom:20px;text-align:center"></div>
+    <div id="modal-info" style="background:#fff5f5;border:1px solid #f5c0c0;border-radius:9px;
+      padding:13px 16px;margin-bottom:18px;text-align:center"></div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">Keep It</button>
-      <button class="btn btn-red" style="flex:1" id="confirm-cancel-btn" onclick="confirmCancel()">
+      <button class="btn btn-red" style="flex:1" id="confirm-btn" onclick="confirmCancel()">
         Yes, Cancel &amp; Free Slot
       </button>
     </div>
@@ -110,500 +121,636 @@ input:checked+.sli:before{transform:translateX(20px)}
 </div>
 
 <script>
-// ─── CREDENTIALS ──────────────────────────────────────────────────────────────
+'use strict';
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════════════════════════════════════
 const CFG = {
-  key:   "$2a$10$BTD2e43NYyQThu0hJfJUbOj2X3Xz/n50FarlnMOAdE4c9CnrXCHuW",
-  binId: "69c7c7b0ed015c742bc4ac17"
+  key:   '$2a$10$BTD2e43NYyQThu0hJfJUbOj2X3Xz/n50FarlnMOAdE4c9CnrXCHuW',
+  binId: '69c7c7b0ed015c742bc4ac17',
 };
-const ADMIN_PIN  = "1234";
+const ADMIN_PIN = '1234';
 const IVS = [
-  {id:"kk", name:"Kondareddy", full:"Gavireddy Kondareddy", ini:"GK", color:"#c8944a"},
-  {id:"rr", name:"Ramireddy",  full:"Ramireddy",            ini:"RR", color:"#4a90c8"},
+  { id:'kk', name:'Kondareddy', full:'Gavireddy Kondareddy', ini:'GK', color:'#c8944a' },
+  { id:'rr', name:'Ramireddy',  full:'Ramireddy',            ini:'RR', color:'#4a90c8' },
 ];
-const MAX_FILL = 2;
-const DAYS     = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const SID      = Math.random().toString(36).slice(2,10);
-const JB       = "https://api.jsonbin.io/v3";
-const WINDOW   = 7;
-const CACHE_KEY= "iv_cache_v2";
+const DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const SID   = Math.random().toString(36).slice(2, 10); // unique session id per tab
+const JB    = 'https://api.jsonbin.io/v3';
+const DAYS_AHEAD = 7;         // rolling window: today + 6 more days
+const FILL_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutes
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-function makeTimes(){ const t=[]; for(let h=9;h<20;h++){t.push(`${h}:00`);t.push(`${h}:30`);} return t; }
-const TIMES = makeTimes();
-function uid(){ return Math.random().toString(36).slice(2,10) }
-function tod(n=0){
-  const d=new Date(); d.setDate(d.getDate()+n);
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0");
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+// Local date string (YYYY-MM-DD) — avoids UTC timezone bugs
+function localDate(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
 }
-function dayName(ds){ const[y,m,d]=ds.split("-").map(Number); return DAYS[new Date(y,m-1,d).getDay()] }
-function fmtDate(ds){ const[y,m,d]=ds.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) }
-function fmtTime(t){ const[h,m]=t.split(":").map(Number); return `${h>12?h-12:h||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}` }
-function fmtEndTime(t){
-  const[h,m]=t.split(":").map(Number);
-  const total=h*60+m+30;
-  const eh=Math.floor(total/60), em=total%60;
-  return `${eh>12?eh-12:eh||12}:${String(em).padStart(2,"0")} ${eh>=12?"PM":"AM"}`;
-}
-function fmtAt(iso){ return iso?new Date(iso).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"—" }
-function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") }
-function iv(id){ return IVS.find(i=>i.id===id)||IVS[0] }
 
-// DSM rule: Kondareddy 1:00 PM blocked Monday–Friday
-function applyDSMRule(slots){
-  return slots.map(s=>{
-    if(s.ivId==="kk" && s.time==="13:00" && s.status!=="booked"){
-      const [y,m,d]=s.date.split("-").map(Number);
-      const day=new Date(y,m-1,d).getDay();
-      if(day>=1 && day<=5)
-        return {...s,status:"dsm",name:null,email:null,phone:null,
-          position:null,experience:null,notes:null,filledAt:null,fillingAt:null,sid:null};
-    }
-    return s;
-  });
+function dayName(ds) {
+  const [y, m, d] = ds.split('-').map(Number);
+  return DAYS[new Date(y, m - 1, d).getDay()];
 }
 
-function slotsForDate(date){
-  return IVS.flatMap(i=>TIMES.map(time=>({
-    id:uid(),ivId:i.id,date,time,status:"available",duration:null,
-    name:null,email:null,phone:null,position:null,experience:null,notes:null,
-    filledAt:null,fillingAt:null,sid:null
-  })));
+function fmtDate(ds) {
+  const [y, m, d] = ds.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 }
 
-// Add slots for missing dates — NEVER removes existing slots
-function addMissingDates(slots){
-  const required=[];
-  for(let i=0;i<WINDOW;i++) required.push(tod(i));
-  const existing=new Set(slots.map(s=>s.date));
-  let added=false;
-  for(const date of required){
-    if(!existing.has(date)){
-      slots=[...slots,...slotsForDate(date)];
-      added=true;
+function fmtTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  return `${h > 12 ? h - 12 : h || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+function fmtEndTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  const total = h * 60 + m + 30;
+  const eh = Math.floor(total / 60), em = total % 60;
+  return `${eh > 12 ? eh - 12 : eh || 12}:${String(em).padStart(2, '0')} ${eh >= 12 ? 'PM' : 'AM'}`;
+}
+
+function fmtAt(iso) {
+  return iso ? new Date(iso).toLocaleString('en-GB', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function ivById(id) { return IVS.find(i => i.id === id) || IVS[0]; }
+
+// Generate all 30-min slots 9:00–19:30 for one date + one interviewer
+function makeTimes() {
+  const t = [];
+  for (let h = 9; h < 20; h++) { t.push(`${h}:00`); t.push(`${h}:30`); }
+  return t;
+}
+const TIMES = makeTimes();
+
+// Build a blank slot object
+function blankSlot(ivId, date, time) {
+  return {
+    id: uid(), ivId, date, time,
+    status: 'available',   // available | filling | booked
+    name: null, email: null, phone: null,
+    position: null, experience: null, duration: null, notes: null,
+    filledAt: null, fillingAt: null, sid: null,
+  };
+}
+
+// Add slots for any date in the rolling window that doesn't exist yet
+// NEVER removes existing slots
+function addMissingDates(slots) {
+  const required = Array.from({ length: DAYS_AHEAD }, (_, i) => localDate(i));
+  const existing = new Set(slots.map(s => s.date));
+  let added = false;
+  for (const date of required) {
+    if (!existing.has(date)) {
+      for (const iv of IVS) {
+        for (const time of TIMES) {
+          slots = [...slots, blankSlot(iv.id, date, time)];
+        }
+      }
+      added = true;
     }
   }
-  return {slots,added};
+  return { slots, added };
 }
 
-// Expire filling slots older than 8 minutes — display only, does NOT write
-function expireStale(slots){
-  const now=Date.now();
-  return slots.map(s=>{
-    if(s.status==="filling"&&s.fillingAt&&now-new Date(s.fillingAt).getTime()>8*60000)
-      return {...s,status:"available",fillingAt:null,sid:null};
+// Expire any "filling" slot whose timer ran out — LOCAL display only, doesn't write
+function expireFillingSlots(slots) {
+  const now = Date.now();
+  return slots.map(s => {
+    if (s.status === 'filling' && s.fillingAt &&
+        now - new Date(s.fillingAt).getTime() > FILL_TIMEOUT_MS) {
+      return { ...s, status: 'available', fillingAt: null, sid: null };
+    }
     return s;
   });
 }
 
-// ─── CACHE ────────────────────────────────────────────────────────────────────
-function saveCache(data){
-  try{ localStorage.setItem(CACHE_KEY,JSON.stringify({data,ts:Date.now()})); }catch{}
-}
-function loadCache(){
-  try{
-    const raw=localStorage.getItem(CACHE_KEY);
-    if(!raw) return null;
-    return JSON.parse(raw).data;
-  }catch{ return null; }
+// DSM rule: Kondareddy's 1:00 PM is blocked Mon–Fri
+// Applied to local display only — never written as "dsm" status to DB
+function applyDSM(slots) {
+  return slots.map(s => {
+    if (s.ivId === 'kk' && s.time === '13:00' && s.status === 'available') {
+      const [y, m, d] = s.date.split('-').map(Number);
+      const dow = new Date(y, m - 1, d).getDay();
+      if (dow >= 1 && dow <= 5) return { ...s, status: 'dsm' };
+    }
+    return s;
+  });
 }
 
-// ─── JSONBIN API ──────────────────────────────────────────────────────────────
-async function jRead(){
-  const r=await fetch(`${JB}/b/${CFG.binId}/latest`,
-    {headers:{"X-Master-Key":CFG.key,"X-Bin-Meta":"false"}});
-  if(!r.ok) throw new Error(`Read ${r.status}`);
-  const data=await r.json();
+// Full local processing pipeline: expire + DSM + missing dates (display-only)
+function processSlots(rawSlots) {
+  let slots = expireFillingSlots(rawSlots || []);
+  const { slots: withDates } = addMissingDates(slots);
+  return applyDSM(withDates);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CACHE (localStorage)
+// ═══════════════════════════════════════════════════════════════════════════════
+const CACHE_KEY = 'iv_v3';
+
+function saveCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// JSONBIN API
+// ═══════════════════════════════════════════════════════════════════════════════
+async function apiRead() {
+  const r = await fetch(`${JB}/b/${CFG.binId}/latest`, {
+    headers: { 'X-Master-Key': CFG.key, 'X-Bin-Meta': 'false' },
+  });
+  if (!r.ok) throw new Error(`Read ${r.status}`);
+  const data = await r.json();
   saveCache(data);
   return data;
 }
 
-async function jReadWithRetry(n=4){
-  let err;
-  for(let i=0;i<n;i++){
-    try{ return await jRead(); }
-    catch(e){
-      err=e;
-      if(i<n-1) await new Promise(r=>setTimeout(r,Math.min(1000*Math.pow(2,i),6000)));
+async function apiReadWithRetry(attempts = 4) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try { return await apiRead(); }
+    catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await sleep(Math.min(800 * Math.pow(2, i), 5000));
     }
   }
-  throw err;
+  throw lastErr;
 }
 
-// THE ONLY FUNCTION THAT WRITES TO JSONBIN
-// Rule: ALWAYS read fresh data first, merge the change, then write
-// This prevents EVERY race condition
-let writing=false;
-async function atomicWrite(changeFn){
-  if(writing) throw new Error("busy");
-  writing=true;
-  try{
-    // Get absolute latest data right before writing
-    const fresh=await jRead();
-    // Apply the change to fresh data
-    const updated=changeFn(fresh);
-    // Write back
-    const r=await fetch(`${JB}/b/${CFG.binId}`,{method:"PUT",
-      headers:{"Content-Type":"application/json","X-Master-Key":CFG.key},
-      body:JSON.stringify(updated)});
-    if(!r.ok) throw new Error(`Write ${r.status}`);
-    saveCache(updated);
+async function apiWrite(data) {
+  const r = await fetch(`${JB}/b/${CFG.binId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': CFG.key },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`Write ${r.status}`);
+  saveCache(data);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ───────────────────────────────────────────────────────────────────────────────
+// ATOMIC WRITE — the ONLY way to write to JSONBin
+// 1. Read the absolute latest data
+// 2. Apply changeFn (which can throw to abort)
+// 3. Write back
+// This prevents race conditions: every write sees the freshest state
+// ───────────────────────────────────────────────────────────────────────────────
+let _writing = false;
+
+async function atomicUpdate(changeFn) {
+  if (_writing) throw new Error('BUSY');
+  _writing = true;
+  try {
+    const fresh = await apiRead();           // step 1: read freshest data
+    const updated = changeFn(fresh);        // step 2: apply change (may throw)
+    await apiWrite(updated);                // step 3: write back
     return updated;
   } finally {
-    writing=false;
+    _writing = false;
   }
 }
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-let S={
-  view:"loading",
-  slots:[],avail:{},cancelLog:[],
-  ivId:null,activeDay:null,
-  activeSlotId:null,successSlot:null,
-  cancelTargetId:null,pinError:false,
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPLICATION STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+const S = {
+  view: 'loading',      // loading | landing | candidate | pin | iv-select | iv-panel | form | success
+  slots: [],
+  avail: {},
+  cancelLog: [],
+  ivId: null,
+  activeDay: null,
+  activeSlotId: null,
+  successSlot: null,
+  cancelTargetId: null,
+  pinError: false,
 };
-let pollTimer=null;
 
-// ─── BOOT — READ ONLY, NEVER WRITES ──────────────────────────────────────────
-async function boot(){
-  render();
-  let data=null;
-  try{ data=await jReadWithRetry(4); }
-  catch(e){
-    // Network failed — load from cache
-    data=loadCache();
+// ═══════════════════════════════════════════════════════════════════════════════
+// BOOT — read only, NEVER writes
+// ═══════════════════════════════════════════════════════════════════════════════
+let _pollTimer = null;
+
+async function boot() {
+  render(); // show loading screen
+  let data = null;
+  try {
+    data = await apiReadWithRetry(4);
+  } catch (_) {
+    data = loadCache(); // fall back to cache silently
   }
-  if(data && data.slots && data.slots.length>0){
-    let slots=expireStale(data.slots);
-    // Add missing dates LOCALLY only — no write to JSONBin
-    const {slots:withDates}=addMissingDates(slots);
-    S.slots=applyDSMRule(withDates);
-    S.avail=data.avail||{};
-    S.cancelLog=data.cancelLog||[];
+  if (data) {
+    S.slots    = processSlots(data.slots || []);
+    S.avail    = data.avail || {};
+    S.cancelLog= data.cancelLog || [];
   } else {
-    // Nothing loaded — show empty slots locally for display
-    let ls=[];
-    for(let d=0;d<WINDOW;d++) ls=[...ls,...slotsForDate(tod(d))];
-    S.slots=applyDSMRule(ls);
-    S.avail={}; S.cancelLog=[];
-    if(!data) toast("⚠️ Working offline. Tap Refresh when connected.",5000);
+    // Truly offline and no cache — show empty local schedule, don't write
+    S.slots = processSlots([]);
+    S.avail = {}; S.cancelLog = [];
+    toast('No connection. Tap Refresh when online.', 6000);
   }
-  S.activeDay=tod(0);
-  S.view="landing";
+  S.activeDay = localDate(0);
+  S.view = 'landing';
   render();
   startPoll();
 }
 
-// ─── POLL — READ ONLY, NEVER WRITES ──────────────────────────────────────────
-function startPoll(){
-  clearInterval(pollTimer);
-  pollTimer=setInterval(async()=>{
-    if(document.hidden) return;
-    if(["loading","form","pin"].includes(S.view)) return;
-    if(writing) return;
-    try{
-      const data=await jRead();
-      let slots=expireStale(data.slots||[]);
-      const {slots:withDates}=addMissingDates(slots);
-      S.slots=applyDSMRule(withDates);
-      S.avail=data.avail||{};
-      S.cancelLog=data.cancelLog||[];
+// ═══════════════════════════════════════════════════════════════════════════════
+// POLL — read only, NEVER writes
+// ═══════════════════════════════════════════════════════════════════════════════
+function startPoll() {
+  clearInterval(_pollTimer);
+  _pollTimer = setInterval(async () => {
+    if (document.hidden) return;
+    if (['loading', 'form', 'pin'].includes(S.view)) return;
+    if (_writing) return;
+    try {
+      const data = await apiRead();
+      S.slots    = processSlots(data.slots || []);
+      S.avail    = data.avail || {};
+      S.cancelLog= data.cancelLog || [];
       render();
-    }catch{
-      // Silent fail — keep showing existing state
+    } catch (_) {
+      // Silent fail — keep showing existing state from cache
     }
-  },20000);
+  }, 18000); // every 18 seconds
 }
 
-// ─── CANDIDATE ACTIONS ────────────────────────────────────────────────────────
-async function goRegister(slotId){
-  if(writing){ toast("⏳ Please wait a moment."); return; }
-  try{
-    const result=await atomicWrite(fresh=>{
-      const slots=expireStale(fresh.slots||[]);
-      const slot=slots.find(s=>s.id===slotId);
-      if(!slot||slot.status==="dsm") throw new Error("reserved");
-      if(!slot||slot.status!=="available") throw new Error("taken");
-      const upd=slots.map(s=>s.id===slotId
-        ?{...s,status:"filling",fillingAt:new Date().toISOString(),sid:SID}:s);
-      return {slots:upd,avail:fresh.avail||{},cancelLog:fresh.cancelLog||[]};
+// ═══════════════════════════════════════════════════════════════════════════════
+// CANDIDATE ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Step 1: Candidate clicks "Register" on a slot
+async function startRegister(slotId) {
+  if (_writing) { toast('Please wait a moment…'); return; }
+  try {
+    const result = await atomicUpdate(fresh => {
+      const slots = expireFillingSlots(fresh.slots || []);
+      const slot  = slots.find(s => s.id === slotId);
+
+      // Guards — checked against FRESH data from server
+      if (!slot)                        throw new Error('NOTFOUND');
+      if (slot.status === 'dsm')        throw new Error('RESERVED');
+      if (slot.status === 'booked')     throw new Error('TAKEN');
+      if (slot.status === 'filling')    throw new Error('FILLING'); // someone else is filling it RIGHT NOW
+
+      // Claim the slot for this session
+      return {
+        slots: slots.map(s => s.id === slotId
+          ? { ...s, status:'filling', fillingAt: new Date().toISOString(), sid: SID }
+          : s),
+        avail: fresh.avail || {},
+        cancelLog: fresh.cancelLog || [],
+      };
     });
-    S.slots=applyDSMRule(expireStale(result.slots));
-    S.avail=result.avail; S.cancelLog=result.cancelLog;
-    S.activeSlotId=slotId; S.view="form"; render();
-  }catch(e){
-    if(e.message==="reserved") toast("❌ This slot is reserved.");
-    else if(e.message==="taken") toast("❌ Slot just taken. Pick another.");
-
-    else toast("⚠️ Network error. Try again.");
-    // Refresh local state
-    try{ const d=await jRead(); S.slots=applyDSMRule(expireStale(d.slots||[])); render(); }catch{}
+    // Success — open the form
+    S.slots        = processSlots(result.slots);
+    S.avail        = result.avail;
+    S.cancelLog    = result.cancelLog;
+    S.activeSlotId = slotId;
+    S.view         = 'form';
+    render();
+  } catch (e) {
+    // Refresh local state from server
+    try { const d = await apiRead(); S.slots = processSlots(d.slots||[]); } catch (_) {}
+    if (e.message === 'RESERVED')  toast('This slot is reserved (DSM).');
+    else if (e.message === 'TAKEN') toast('This slot was just booked. Please pick another.');
+    else if (e.message === 'FILLING') toast('Someone is filling this slot right now. Please pick another or try again shortly.');
+    else if (e.message === 'BUSY')  toast('Please wait a moment and try again.');
+    else toast('Network error. Please try again.');
+    render();
   }
 }
 
-async function cancelForm(){
-  if(S.activeSlotId){
-    try{
-      const result=await atomicWrite(fresh=>({
-        slots:(fresh.slots||[]).map(s=>
-          s.id===S.activeSlotId&&s.sid===SID
-            ?{...s,status:"available",fillingAt:null,sid:null}:s),
-        avail:fresh.avail||{},cancelLog:fresh.cancelLog||[]
+// Step 2: Candidate cancels out of the form
+async function cancelForm() {
+  if (S.activeSlotId) {
+    try {
+      const result = await atomicUpdate(fresh => ({
+        slots: (fresh.slots || []).map(s =>
+          s.id === S.activeSlotId && s.sid === SID
+            ? { ...s, status:'available', fillingAt:null, sid:null }
+            : s),
+        avail: fresh.avail || {},
+        cancelLog: fresh.cancelLog || [],
       }));
-      S.slots=applyDSMRule(expireStale(result.slots));
-    }catch{}
+      S.slots     = processSlots(result.slots);
+      S.avail     = result.avail;
+      S.cancelLog = result.cancelLog;
+    } catch (_) {
+      // If release fails, the slot will auto-expire after 8 minutes
+    }
   }
-  S.activeSlotId=null; S.view="candidate"; render();
-}
-
-async function submitForm(){
-  const name=document.getElementById("fn")?.value?.trim();
-  const email=document.getElementById("fe")?.value?.trim();
-  const dur=document.getElementById("fdur")?.value;
-  if(!name||!email){ toast("Name and email are required."); return; }
-  if(!dur){ toast("Please select interview duration."); return; }
-  const btn=document.getElementById("sbtn");
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>Confirming…';}
-  const fd={name,email,
-    phone:document.getElementById("fp")?.value?.trim()||"",
-    position:document.getElementById("fpo")?.value?.trim()||"",
-    experience:document.getElementById("fex")?.value?.trim()||"",
-    duration:dur,
-    notes:document.getElementById("fnt")?.value?.trim()||""};
-  try{
-    const result=await atomicWrite(fresh=>({
-      slots:(fresh.slots||[]).map(s=>s.id===S.activeSlotId
-        ?{...s,status:"booked",...fd,filledAt:new Date().toISOString(),sid:null}:s),
-      avail:fresh.avail||{},cancelLog:fresh.cancelLog||[]
-    }));
-    S.slots=applyDSMRule(expireStale(result.slots));
-    S.avail=result.avail; S.cancelLog=result.cancelLog;
-    S.successSlot=S.slots.find(s=>s.id===S.activeSlotId);
-    S.activeSlotId=null; S.view="success"; render();
-  }catch{
-    toast("⚠️ Save failed. Please try again.");
-    if(btn){btn.disabled=false;btn.textContent="Confirm Registration →";}
-  }
-}
-
-// ─── ADMIN ACTIONS ────────────────────────────────────────────────────────────
-function checkPin(){
-  const pin=document.getElementById("pin-input")?.value?.trim();
-  if(pin===ADMIN_PIN){ S.pinError=false; S.view="iv-select"; render(); }
-  else{ S.pinError=true; render(); }
-}
-
-function toggleAvail(ivId,date,val){
-  if(!S.avail[ivId]) S.avail[ivId]={};
-  S.avail[ivId][date]=val;
-  const localAvail=JSON.parse(JSON.stringify(S.avail));
-  atomicWrite(fresh=>({
-    slots:fresh.slots||[],
-    avail:localAvail,
-    cancelLog:fresh.cancelLog||[]
-  })).then(result=>{
-    S.avail=result.avail;
-  }).catch(()=>toast("⚠️ Error saving availability."));
+  S.activeSlotId = null;
+  S.view = 'candidate';
   render();
 }
 
-function getAvail(ivId,date){
-  if(!S.avail[ivId]) return true;
-  return S.avail[ivId][date]!==undefined?S.avail[ivId][date]:true;
+// Step 3: Candidate submits the form
+async function submitForm() {
+  const name  = document.getElementById('f-name')?.value?.trim();
+  const email = document.getElementById('f-email')?.value?.trim();
+  const dur   = document.getElementById('f-dur')?.value;
+  if (!name || !email) { toast('Name and email are required.'); return; }
+  if (!dur)            { toast('Please select your interview duration.'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Confirming…'; }
+
+  const formData = {
+    name, email,
+    phone:      document.getElementById('f-phone')?.value?.trim()    || '',
+    position:   document.getElementById('f-position')?.value?.trim() || '',
+    experience: document.getElementById('f-exp')?.value?.trim()      || '',
+    duration:   dur,
+    notes:      document.getElementById('f-notes')?.value?.trim()    || '',
+  };
+
+  try {
+    const result = await atomicUpdate(fresh => {
+      const slot = (fresh.slots || []).find(s => s.id === S.activeSlotId);
+      if (!slot) throw new Error('NOTFOUND');
+      // Verify it's still ours (same session)
+      if (slot.status === 'booked') throw new Error('ALREADYBOOKED');
+      return {
+        slots: (fresh.slots || []).map(s => s.id === S.activeSlotId
+          ? { ...s, status:'booked', ...formData, filledAt: new Date().toISOString(), sid:null }
+          : s),
+        avail: fresh.avail || {},
+        cancelLog: fresh.cancelLog || [],
+      };
+    });
+    S.slots       = processSlots(result.slots);
+    S.avail       = result.avail;
+    S.cancelLog   = result.cancelLog;
+    S.successSlot = S.slots.find(s => s.id === S.activeSlotId) ||
+                    result.slots.find(s => s.id === S.activeSlotId);
+    S.activeSlotId = null;
+    S.view = 'success';
+    render();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirm Registration →'; }
+    if (e.message === 'ALREADYBOOKED') toast('This slot was already booked. Refresh to see the latest schedule.');
+    else toast('Save failed. Please check your connection and try again.');
+  }
 }
 
-let cancelInProgress=false;
-
-function resetCancelBtn(){
-  const btn=document.getElementById("confirm-cancel-btn");
-  if(btn){btn.disabled=false;btn.innerHTML="Yes, Cancel &amp; Free Slot";btn.style.opacity="1";}
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+function checkPin() {
+  const pin = document.getElementById('pin-input')?.value?.trim();
+  if (pin === ADMIN_PIN) { S.pinError = false; S.view = 'iv-select'; render(); }
+  else { S.pinError = true; render(); }
 }
 
-function openCancelModal(slotId){
-  const slot=S.slots.find(s=>s.id===slotId);
-  if(!slot){ toast("Slot not found."); return; }
-  S.cancelTargetId=slotId;
-  cancelInProgress=false;
-  writing=false;
-  resetCancelBtn();
-  document.getElementById("modal-info").innerHTML=`
-    <div style="font-weight:700;font-size:15px;color:#1a1a2e;margin-bottom:4px">${esc(slot.name)}</div>
-    <div class="mono" style="font-size:12px;color:#888;margin-bottom:8px">${esc(slot.email)}</div>
+function toggleAvail(ivId, date, val) {
+  if (!S.avail[ivId]) S.avail[ivId] = {};
+  S.avail[ivId][date] = val;
+  const avail = JSON.parse(JSON.stringify(S.avail)); // snapshot
+  atomicUpdate(fresh => ({
+    slots: fresh.slots || [],
+    avail,
+    cancelLog: fresh.cancelLog || [],
+  })).then(r => { S.avail = r.avail; })
+    .catch(() => toast('Error saving availability.'));
+  render();
+}
+
+function getAvail(ivId, date) {
+  if (!S.avail[ivId]) return true;
+  return S.avail[ivId][date] !== undefined ? S.avail[ivId][date] : true;
+}
+
+// Cancel modal
+let _cancelBusy = false;
+
+function openCancelModal(slotId) {
+  const slot = S.slots.find(s => s.id === slotId);
+  if (!slot) { toast('Slot not found.'); return; }
+  S.cancelTargetId = slotId;
+  _cancelBusy = false;
+  _writing = false;
+  const btn = document.getElementById('confirm-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Yes, Cancel &amp; Free Slot'; }
+  document.getElementById('modal-info').innerHTML = `
+    <div style="font-weight:700;font-size:14px;color:#1a1a2e;margin-bottom:4px">${esc(slot.name)}</div>
+    <div class="mono" style="font-size:12px;color:#888;margin-bottom:6px">${esc(slot.email)}</div>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
       <span class="mono" style="font-size:12px;color:#c8944a">${dayName(slot.date)}, ${fmtDate(slot.date)}</span>
-      <span class="mono" style="font-size:13px;color:#4a90c8;font-weight:700">${fmtTime(slot.time)}</span>
+      <span class="mono" style="font-size:12px;color:#4a90c8;font-weight:700">${fmtTime(slot.time)}</span>
     </div>`;
-  document.getElementById("cancel-modal").style.display="flex";
+  document.getElementById('cancel-modal').style.display = 'flex';
 }
 
-function closeModal(){
-  document.getElementById("cancel-modal").style.display="none";
-  S.cancelTargetId=null; cancelInProgress=false; resetCancelBtn();
+function closeModal() {
+  document.getElementById('cancel-modal').style.display = 'none';
+  S.cancelTargetId = null;
+  _cancelBusy = false;
+  const btn = document.getElementById('confirm-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = 'Yes, Cancel &amp; Free Slot'; }
 }
 
-function handleModalBgClick(e){ if(e.target===e.currentTarget) closeModal(); }
-
-async function confirmCancel(){
-  if(cancelInProgress) return;
-  const slotId=S.cancelTargetId;
-  if(!slotId){ closeModal(); return; }
-  cancelInProgress=true;
-  const btn=document.getElementById("confirm-cancel-btn");
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>Cancelling…';}
-  const adminName=iv(S.ivId)?.full||"Admin";
-  try{
-    const result=await atomicWrite(fresh=>{
-      const bookedSlot=(fresh.slots||[]).find(s=>s.id===slotId);
-      if(!bookedSlot) throw new Error("notfound");
-      const logEntry={
-        id:uid(),slotId:bookedSlot.id,ivId:bookedSlot.ivId,
-        date:bookedSlot.date,time:bookedSlot.time,
-        name:bookedSlot.name,email:bookedSlot.email,
-        phone:bookedSlot.phone||"",position:bookedSlot.position||"",
-        cancelledAt:new Date().toISOString(),cancelledBy:adminName
+async function confirmCancel() {
+  if (_cancelBusy) return;
+  const slotId = S.cancelTargetId;
+  if (!slotId) { closeModal(); return; }
+  _cancelBusy = true;
+  const btn = document.getElementById('confirm-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Cancelling…'; }
+  const adminName = ivById(S.ivId)?.full || 'Admin';
+  try {
+    const result = await atomicUpdate(fresh => {
+      const slot = (fresh.slots || []).find(s => s.id === slotId);
+      if (!slot || slot.status !== 'booked') throw new Error('NOTBOOKED');
+      const logEntry = {
+        id: uid(), slotId: slot.id, ivId: slot.ivId,
+        date: slot.date, time: slot.time,
+        name: slot.name, email: slot.email,
+        phone: slot.phone || '', position: slot.position || '',
+        duration: slot.duration || '',
+        cancelledAt: new Date().toISOString(), cancelledBy: adminName,
       };
-      const updSlots=(fresh.slots||[]).map(s=>s.id===slotId
-        ?{...s,status:"available",name:null,email:null,phone:null,
-            position:null,experience:null,notes:null,
-            filledAt:null,fillingAt:null,sid:null,duration:null}:s);
-      return {slots:updSlots,avail:fresh.avail||{},cancelLog:[...(fresh.cancelLog||[]),logEntry]};
+      return {
+        slots: (fresh.slots || []).map(s => s.id === slotId
+          ? { ...s, status:'available', name:null, email:null, phone:null,
+              position:null, experience:null, duration:null, notes:null,
+              filledAt:null, fillingAt:null, sid:null }
+          : s),
+        avail: fresh.avail || {},
+        cancelLog: [...(fresh.cancelLog || []), logEntry],
+      };
     });
-    S.slots=applyDSMRule(expireStale(result.slots));
-    S.cancelLog=result.cancelLog;
+    S.slots     = processSlots(result.slots);
+    S.avail     = result.avail;
+    S.cancelLog = result.cancelLog;
     closeModal();
-    toast("✅ Interview cancelled. Slot is now free for others to book.");
+    toast('✅ Interview cancelled. Slot is free for others to book.');
     render();
-  }catch(e){
-    if(e.message==="notfound") toast("Slot not found — may already be cancelled.");
-    else toast("⚠️ Save failed. Please try again.");
-    cancelInProgress=false; resetCancelBtn();
+  } catch (e) {
+    _cancelBusy = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Yes, Cancel &amp; Free Slot'; }
+    if (e.message === 'NOTBOOKED') toast('This slot is not currently booked.');
+    else toast('Save failed. Please try again.');
   }
 }
 
-window.addEventListener("beforeunload",()=>{
-  if(!S.activeSlotId) return;
-  try{
-    const upd=S.slots.map(s=>s.id===S.activeSlotId&&s.sid===SID
-      ?{...s,status:"available",fillingAt:null,sid:null}:s);
-    navigator.sendBeacon&&navigator.sendBeacon(`${JB}/b/${CFG.binId}`,
-      new Blob([JSON.stringify({slots:upd,avail:S.avail,cancelLog:S.cancelLog})],
-      {type:"application/json"}));
-  }catch{}
+// Release filling slot if user closes tab
+window.addEventListener('beforeunload', () => {
+  if (!S.activeSlotId) return;
+  try {
+    const upd = S.slots.map(s =>
+      s.id === S.activeSlotId && s.sid === SID
+        ? { ...s, status:'available', fillingAt:null, sid:null } : s);
+    navigator.sendBeacon && navigator.sendBeacon(
+      `${JB}/b/${CFG.binId}`,
+      new Blob([JSON.stringify({ slots:upd, avail:S.avail, cancelLog:S.cancelLog })],
+               { type:'application/json' }));
+  } catch (_) {}
 });
 
-async function loadData(){
-  try{
-    const data=await jReadWithRetry();
-    let slots=expireStale(data.slots||[]);
-    const {slots:withDates}=addMissingDates(slots);
-    S.slots=applyDSMRule(withDates);
-    S.avail=data.avail||{};
-    S.cancelLog=data.cancelLog||[];
-    render(); toast("✅ Refreshed.");
-  }catch{
-    toast("⚠️ No connection. Check internet and try again.");
+// ═══════════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function goLanding()  { S.view = 'landing';  S.activeSlotId = null; render(); }
+function setDay(d)    { S.activeDay = d; render(); }
+
+async function refreshData() {
+  try {
+    const data = await apiReadWithRetry();
+    S.slots     = processSlots(data.slots || []);
+    S.avail     = data.avail || {};
+    S.cancelLog = data.cancelLog || [];
+    render(); toast('✅ Refreshed.');
+  } catch (_) {
+    toast('No connection. Please check internet.');
   }
 }
 
-function goLanding(){ S.view="landing"; S.activeSlotId=null; render(); }
-function setDay(d){ S.activeDay=d; render(); }
-
-let toastT;
-function toast(msg,d=3500){
-  const t=document.getElementById("toast");
-  t.textContent=msg; t.classList.add("on");
-  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),d);
+let _toastTimer;
+function toast(msg, dur = 3500) {
+  const el = document.getElementById('toast-el');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('on'), dur);
 }
 
-boot();
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+function render() {
+  const app = document.getElementById('app');
+  const { view, slots, avail } = S;
+  const todayStr = localDate(0);
+  const visibleSlots = slots.filter(s => s.date >= todayStr);
+  const bookedAll = visibleSlots.filter(s => s.status === 'booked');
+  const dates = [...new Set(visibleSlots.map(s => s.date))].sort();
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function render(){
-  const app = document.getElementById("app");
-  const {view,slots,avail} = S;
-  const todayStr = tod(0);
-
-  // Only show today onwards
-  const visibleSlots = slots.filter(s=>s.date>=todayStr);
-  // Compute active fillers with stale-expiry so freed slots are immediately bookable
-  const nowMs = Date.now();
-  const af = visibleSlots.filter(s=>
-    s.status==="filling" && s.fillingAt &&
-    (nowMs - new Date(s.fillingAt).getTime()) < 8*60000
-  ).length;
-  const bookedAll = visibleSlots.filter(s=>s.status==="booked");
-  const dates = [...new Set(visibleSlots.map(s=>s.date))].sort();
-
-  const hdr=(sub,back)=>`
-    <div style="margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #e0dbd0;
+  const hdr = (sub, backFn) => `
+    <div style="margin-bottom:26px;padding-bottom:18px;border-bottom:1px solid #e0dbd0;
       display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
       <div>
-        <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,4vw,2.3rem);
+        <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.4rem,4vw,2.2rem);
           color:#1a1a2e;letter-spacing:-.02em;line-height:1">
           Interview <em style="font-style:italic;color:#c8944a">Scheduler</em>
         </h1>
-        <p class="mono" style="font-size:10px;color:#aaa;letter-spacing:.13em;text-transform:uppercase;margin-top:5px">${sub}</p>
+        <p class="mono" style="font-size:10px;color:#aaa;letter-spacing:.13em;
+          text-transform:uppercase;margin-top:5px">${sub}</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span class="live-pill">🟢 Live</span>
-        ${back?`<button class="btn btn-ghost" onclick="${back}" style="font-size:12px;padding:8px 14px">🏠 Home</button>`:""}
+        ${backFn ? `<button class="btn btn-ghost" onclick="${backFn}"
+          style="font-size:12px;padding:7px 13px">🏠 Home</button>` : ''}
       </div>
     </div>`;
 
   // ── LOADING ──────────────────────────────────────────────────────────────
-  if(view==="loading"){
-    app.innerHTML=`<div style="text-align:center;padding:100px 20px">
-      <div style="font-size:36px;margin-bottom:16px">📅</div>
-      <h1 style="font-family:'Playfair Display',serif;font-size:2rem;color:#1a1a2e;margin-bottom:8px">
-        Interview <em style="color:#c8944a;font-style:italic">Scheduler</em>
-      </h1>
-      <div class="mono" style="font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:.12em;margin-top:16px">
-        <span class="spin" style="border-color:rgba(0,0,0,.15);border-top-color:#c8944a"></span>
-        Loading schedule…
-      </div>
-    </div>`;
+  if (view === 'loading') {
+    app.innerHTML = `
+      <div style="text-align:center;padding:90px 20px">
+        <div style="font-size:34px;margin-bottom:14px">📅</div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:1.9rem;color:#1a1a2e;margin-bottom:6px">
+          Interview <em style="color:#c8944a;font-style:italic">Scheduler</em>
+        </h1>
+        <div class="mono" style="font-size:12px;color:#aaa;margin-top:14px">
+          <span class="spin" style="border-color:rgba(0,0,0,.15);border-top-color:#c8944a"></span>
+          Loading…
+        </div>
+      </div>`;
     return;
   }
 
   // ── LANDING ───────────────────────────────────────────────────────────────
-  if(view==="landing"){
-    const todayBooked = bookedAll.filter(s=>s.date===todayStr);
-    app.innerHTML=`<div class="view">
-      ${hdr("Select your role")}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin:0 auto 32px">
+  if (view === 'landing') {
+    const todayBooked = bookedAll.filter(s => s.date === todayStr);
+    app.innerHTML = `<div class="view">
+      ${hdr('Select your role')}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:660px;margin:0 auto 28px">
         <button class="lcard" onclick="S.view='candidate';render()">
-          <div style="font-size:36px;margin-bottom:12px">🎯</div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:6px">I'm a Candidate</div>
-          <div style="font-size:13px;color:#888;line-height:1.6">Browse 30-min slots 9 AM–8 PM, see who's registered, and book your interview.</div>
-          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-            <span class="badge bg-g">✓ ${visibleSlots.filter(s=>s.status==="available").length} open</span>
+          <div style="font-size:34px;margin-bottom:10px">🎯</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.05rem;margin-bottom:5px">I'm a Candidate</div>
+          <div style="font-size:13px;color:#888;line-height:1.5">Browse slots 9 AM–8 PM, see who's registered, book your interview.</div>
+          <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
+            <span class="badge bg-g">✓ ${visibleSlots.filter(s=>s.status==='available').length} open</span>
             <span class="badge bg-b">${bookedAll.length} booked</span>
           </div>
         </button>
         <button class="lcard" onclick="S.view='pin';S.pinError=false;render()">
-          <div style="font-size:36px;margin-bottom:12px">🔐</div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:6px">I'm an Admin</div>
-          <div style="font-size:13px;color:#888;line-height:1.6">View schedules, cancel interviews and manage availability. Enter PIN to access.</div>
-          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <div style="font-size:34px;margin-bottom:10px">🔐</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.05rem;margin-bottom:5px">I'm an Admin</div>
+          <div style="font-size:13px;color:#888;line-height:1.5">View schedules, cancel interviews, manage availability.</div>
+          <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
             <span class="badge bg-a">Kondareddy</span>
             <span class="badge bg-b">Ramireddy</span>
           </div>
         </button>
       </div>
-      <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
-        📌 Today's Interviews — ${dayName(todayStr)}, ${fmtDate(todayStr)} (${todayBooked.length})
+      <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+        letter-spacing:.13em;margin-bottom:11px">
+        📌 Today — ${dayName(todayStr)}, ${fmtDate(todayStr)} (${todayBooked.length} interviews)
       </div>
       <div class="card">
-        <table><thead><tr><th>Candidate</th><th>Interviewer</th><th>Time</th><th>Position</th></tr></thead>
-        <tbody>${todayBooked.length>0
-          ?todayBooked.sort((a,b)=>a.time.localeCompare(b.time)).map(s=>{const i=iv(s.ivId);return`<tr>
-            <td><strong>${esc(s.name)}</strong><div class="mono" style="font-size:11px;color:#aaa">${esc(s.email)}</div></td>
-            <td><span style="display:inline-flex;align-items:center;gap:6px">
-              <span style="width:8px;height:8px;border-radius:50%;background:${i.color};display:inline-block"></span>${i.name}</span></td>
-            <td class="mono" style="color:${i.color};font-weight:600">${fmtTime(s.time)}</td>
-            <td style="color:#666">${esc(s.position||"—")}</td>
-          </tr>`;}).join("")
-          :`<tr><td colspan="4" style="text-align:center;color:#ccc;padding:24px;font-size:13px">No interviews scheduled for today yet.</td></tr>`}
+        <table><thead><tr>
+          <th>Candidate</th><th>Interviewer</th><th>Time</th><th>Duration</th>
+        </tr></thead>
+        <tbody>${todayBooked.length
+          ? todayBooked.sort((a,b)=>a.time.localeCompare(b.time)).map(s => {
+              const iv = ivById(s.ivId);
+              return `<tr>
+                <td><strong>${esc(s.name)}</strong>
+                  <div class="mono" style="font-size:11px;color:#aaa">${esc(s.email)}</div></td>
+                <td><span style="display:inline-flex;align-items:center;gap:5px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${iv.color};display:inline-block"></span>
+                  ${iv.name}</span></td>
+                <td class="mono" style="color:${iv.color};font-weight:600">${fmtTime(s.time)}</td>
+                <td class="mono" style="font-size:12px;color:#888">${esc(s.duration||'30 min')}</td>
+              </tr>`;
+            }).join('')
+          : `<tr><td colspan="4" style="text-align:center;color:#ccc;padding:22px;font-size:13px">
+              No interviews today yet.</td></tr>`}
         </tbody></table>
       </div>
     </div>`;
@@ -611,54 +758,67 @@ function render(){
   }
 
   // ── PIN ───────────────────────────────────────────────────────────────────
-  if(view==="pin"){
-    app.innerHTML=`<div class="view">
-      ${hdr("Admin access","goLanding()")}
+  if (view === 'pin') {
+    app.innerHTML = `<div class="view">
+      ${hdr('Admin access', 'goLanding()')}
       <div class="pin-box">
-        <div style="font-size:40px;margin-bottom:16px">🔐</div>
-        <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:6px">Admin Login</h2>
-        <p style="font-size:13px;color:#888;margin-bottom:24px;line-height:1.6">Enter the 4-digit PIN to access the admin panel.</p>
-        <input id="pin-input" type="password" maxlength="4" placeholder="• • • •"
-          style="text-align:center;font-size:28px;letter-spacing:.4em;margin-bottom:12px"
+        <div style="font-size:38px;margin-bottom:14px">🔐</div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:6px">Admin Login</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:22px;line-height:1.6">
+          Enter the 4-digit PIN to continue.
+        </p>
+        <input id="pin-input" type="password" maxlength="6" placeholder="• • • •"
+          style="text-align:center;font-size:24px;letter-spacing:.4em;margin-bottom:10px"
           onkeydown="if(event.key==='Enter')checkPin()"/>
-        ${S.pinError?`<div style="color:#c0392b;font-size:13px;margin-bottom:12px;font-family:'DM Mono',monospace">❌ Wrong PIN. Try again.</div>`:""}
-        <button class="btn btn-amber" onclick="checkPin()" style="width:100%;padding:13px;font-size:14px;margin-top:4px">Enter Admin Panel →</button>
-        <p class="mono" style="font-size:10px;color:#ccc;margin-top:14px">Only Kondareddy &amp; Ramireddy have the PIN</p>
+        ${S.pinError ? `<div style="color:#c0392b;font-size:13px;margin-bottom:10px;
+          font-family:'DM Mono',monospace">❌ Wrong PIN. Try again.</div>` : ''}
+        <button class="btn btn-amber" onclick="checkPin()"
+          style="width:100%;padding:12px;font-size:14px;margin-top:4px">
+          Enter Admin Panel →
+        </button>
+        <p class="mono" style="font-size:10px;color:#ccc;margin-top:12px">
+          Kondareddy &amp; Ramireddy only
+        </p>
       </div>
     </div>`;
-    setTimeout(()=>document.getElementById("pin-input")?.focus(),100);
+    setTimeout(() => document.getElementById('pin-input')?.focus(), 80);
     return;
   }
 
   // ── ADMIN SELECT ──────────────────────────────────────────────────────────
-  if(view==="iv-select"){
-    app.innerHTML=`<div class="view">
-      ${hdr("Admin portal","goLanding()")}
-      <div style="max-width:480px;margin:0 auto">
-        <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:14px">Select your name</div>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          ${IVS.map(i=>{
-            const myBooked=visibleSlots.filter(s=>s.ivId===i.id&&s.status==="booked").length;
-            const todayB=visibleSlots.filter(s=>s.ivId===i.id&&s.status==="booked"&&s.date===todayStr).length;
-            const myCancelled=S.cancelLog.filter(l=>l.ivId===i.id&&l.date>=todayStr).length;
-            return`<button onclick="S.ivId='${i.id}';S.activeDay=tod(0);S.view='iv-panel';render()"
-              style="background:#fff;border:2px solid #e0dbd0;border-radius:14px;padding:20px 22px;
-              cursor:pointer;display:flex;align-items:center;gap:16px;transition:all .18s;text-align:left;width:100%"
-              onmouseover="this.style.borderColor='${i.color}'" onmouseout="this.style.borderColor='#e0dbd0'">
-              <div style="width:50px;height:50px;border-radius:50%;background:${i.color};
+  if (view === 'iv-select') {
+    app.innerHTML = `<div class="view">
+      ${hdr('Admin portal', 'goLanding()')}
+      <div style="max-width:460px;margin:0 auto">
+        <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+          letter-spacing:.13em;margin-bottom:12px">Select your name</div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          ${IVS.map(iv => {
+            const myBooked    = visibleSlots.filter(s=>s.ivId===iv.id&&s.status==='booked').length;
+            const todayBooked = visibleSlots.filter(s=>s.ivId===iv.id&&s.status==='booked'&&s.date===todayStr).length;
+            const myCancelled = S.cancelLog.filter(l=>l.ivId===iv.id).length;
+            return `<button onclick="S.ivId='${iv.id}';S.activeDay=localDate(0);S.view='iv-panel';render()"
+              style="background:#fff;border:2px solid #e0dbd0;border-radius:13px;padding:18px 20px;
+              cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .18s;
+              text-align:left;width:100%"
+              onmouseover="this.style.borderColor='${iv.color}'"
+              onmouseout="this.style.borderColor='#e0dbd0'">
+              <div style="width:48px;height:48px;border-radius:50%;background:${iv.color};
                 display:flex;align-items:center;justify-content:center;color:#fff;
-                font-family:'DM Mono',monospace;font-size:15px;font-weight:500;flex-shrink:0">${i.ini}</div>
+                font-family:'DM Mono',monospace;font-size:14px;font-weight:500;flex-shrink:0">
+                ${iv.ini}</div>
               <div style="flex:1">
-                <div style="font-weight:700;font-size:16px">${i.full}</div>
+                <div style="font-weight:700;font-size:15px">${iv.full}</div>
                 <div style="font-size:12px;color:#aaa;margin-top:2px">Admin · Interviewer</div>
-                <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
-                  <span class="badge bg-b">${todayB} today</span>
-                  <span class="badge bg-g">${myBooked} booked</span>
-                  ${myCancelled>0?`<span class="badge bg-r">${myCancelled} cancelled</span>`:""}
+                <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                  <span class="badge bg-b">${todayBooked} today</span>
+                  <span class="badge bg-g">${myBooked} total</span>
+                  ${myCancelled > 0 ? `<span class="badge bg-r">${myCancelled} cancelled</span>` : ''}
                 </div>
               </div>
-              <span style="font-size:20px;color:#ddd">→</span>
-            </button>`;}).join("")}
+              <span style="font-size:18px;color:#ddd">→</span>
+            </button>`;
+          }).join('')}
         </div>
       </div>
     </div>`;
@@ -666,158 +826,184 @@ function render(){
   }
 
   // ── ADMIN PANEL ───────────────────────────────────────────────────────────
-  if(view==="iv-panel"){
-    const i = iv(S.ivId);
-    const mySlots = visibleSlots.filter(s=>s.ivId===i.id);
-    const myDates = [...new Set(mySlots.map(s=>s.date))].sort();
+  if (view === 'iv-panel') {
+    const iv = ivById(S.ivId);
+    const mySlots  = visibleSlots.filter(s => s.ivId === iv.id);
+    const myDates  = [...new Set(mySlots.map(s => s.date))].sort();
     const activeDate = S.activeDay && myDates.includes(S.activeDay) ? S.activeDay : myDates[0];
-    const daySlots = mySlots.filter(s=>s.date===activeDate).sort((a,b)=>a.time.localeCompare(b.time));
-    const dayBooked = daySlots.filter(s=>s.status==="booked");
-    const dayAvl = getAvail(i.id, activeDate);
-    const totalBooked = mySlots.filter(s=>s.status==="booked").length;
-    const todayB = mySlots.filter(s=>s.status==="booked"&&s.date===todayStr).length;
-    // Cancellation log for this interviewer/day
-    const dayCancelLog = S.cancelLog.filter(l=>l.ivId===i.id&&l.date===activeDate)
-      .sort((a,b)=>a.time.localeCompare(b.time));
-    const totalCancelled = S.cancelLog.filter(l=>l.ivId===i.id&&l.date>=todayStr).length;
+    const daySlots   = mySlots.filter(s => s.date === activeDate).sort((a,b)=>a.time.localeCompare(b.time));
+    const dayBooked  = daySlots.filter(s => s.status === 'booked');
+    const dayAvl     = getAvail(iv.id, activeDate);
+    const totalBooked    = mySlots.filter(s=>s.status==='booked').length;
+    const totalCancelled = S.cancelLog.filter(l=>l.ivId===iv.id).length;
+    const todayB         = mySlots.filter(s=>s.status==='booked'&&s.date===todayStr).length;
+    const dayCancelLog   = S.cancelLog.filter(l=>l.ivId===iv.id&&l.date===activeDate)
+                            .sort((a,b)=>a.time.localeCompare(b.time));
 
-    const dayTabs = myDates.map(date=>{
-      const db = mySlots.filter(s=>s.date===date&&s.status==="booked").length;
-      const dc = S.cancelLog.filter(l=>l.ivId===i.id&&l.date===date).length;
-      return`<button class="dtab ${date===activeDate?"act":""}" onclick="setDay('${date}')">
+    const dayTabs = myDates.map(date => {
+      const db = mySlots.filter(s=>s.date===date&&s.status==='booked').length;
+      const dc = S.cancelLog.filter(l=>l.ivId===iv.id&&l.date===date).length;
+      return `<button class="dtab ${date===activeDate?'act':''}" onclick="setDay('${date}')">
         <div style="font-weight:${date===todayStr?700:400}">${dayName(date).slice(0,3)}</div>
         <div style="font-size:9px;margin-top:1px;opacity:.8">${date.slice(5)}</div>
-        <div style="display:flex;justify-content:center;gap:3px;margin-top:3px;min-height:8px">
-          ${date===todayStr?`<span style="width:6px;height:6px;border-radius:50%;background:${date===activeDate?"#fff":"#c8944a"};display:inline-block"></span>`:""}
-          ${db>0?`<span style="width:6px;height:6px;border-radius:50%;background:${date===activeDate?"#fff":"#6ec89a"};display:inline-block"></span>`:""}
-          ${dc>0?`<span style="width:6px;height:6px;border-radius:50%;background:${date===activeDate?"#ffaaaa":"#f0b0b0"};display:inline-block"></span>`:""}
+        <div style="display:flex;justify-content:center;gap:3px;margin-top:3px;min-height:7px">
+          ${db > 0 ? `<span style="width:6px;height:6px;border-radius:50%;
+            background:${date===activeDate?'#fff':'#6ec89a'};display:inline-block"></span>` : ''}
+          ${dc > 0 ? `<span style="width:6px;height:6px;border-radius:50%;
+            background:${date===activeDate?'#ffaaaa':'#f0b0b0'};display:inline-block"></span>` : ''}
         </div>
-      </button>`;}).join("");
+      </button>`;
+    }).join('');
 
-    // Timeline rows — cancel button uses direct slotId, not a re-rendered state
-    const tlRows = daySlots.map(slot=>{
-      const isB=slot.status==="booked", isF=slot.status==="filling";
-      let cell = "";
-      if(isB) cell=`
+    const tlRows = daySlots.map(slot => {
+      const isB = slot.status === 'booked';
+      const isF = slot.status === 'filling';
+      const isD = slot.status === 'dsm';
+      let cell = '';
+      if (isB) cell = `
         <div style="display:flex;align-items:center;gap:10px;width:100%">
-          <div style="width:5px;height:40px;border-radius:3px;background:${i.color};flex-shrink:0"></div>
+          <div style="width:4px;height:38px;border-radius:3px;background:${iv.color};flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(slot.name)}</div>
-            <div class="mono" style="font-size:11px;color:#aaa;margin-top:1px">${esc(slot.email)}${slot.phone?` · ${esc(slot.phone)}`:""}</div>
-          ${slot.duration?`<div class="mono" style="font-size:11px;color:#c8944a;margin-top:1px">⏱ ${esc(slot.duration)}</div>`:""}
+            <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${esc(slot.name)}</div>
+            <div class="mono" style="font-size:11px;color:#aaa;margin-top:1px">
+              ${esc(slot.email)}${slot.phone ? ` · ${esc(slot.phone)}` : ''}</div>
+            ${slot.duration ? `<div class="mono" style="font-size:10px;color:${iv.color};margin-top:1px">
+              ⏱ ${esc(slot.duration)}</div>` : ''}
           </div>
-          ${slot.position?`<span class="badge bg-m" style="font-size:9px;flex-shrink:0">${esc(slot.position)}</span>`:""}
-          <button class="cancel-btn" onclick="openCancelModal('${slot.id}')">✕ Cancel Interview</button>
+          ${slot.position ? `<span class="badge bg-m" style="font-size:9px;flex-shrink:0">
+            ${esc(slot.position)}</span>` : ''}
+          <button class="cancel-btn" onclick="openCancelModal('${slot.id}')">✕ Cancel</button>
         </div>`;
-      else if(isF) cell=`<span class="badge bg-a">⏳ Candidate filling form…</span>`;
-      else if(slot.status==="dsm") cell=`<span style="font-family:'DM Mono',monospace;font-size:12px;
-        color:#888;background:#f0ece4;padding:4px 12px;border-radius:6px;font-weight:500">
-        🔒 DSM — Blocked daily</span>`;
-      else cell=`<span class="mono" style="font-size:12px;color:${dayAvl?"#ddd":"#eee"}">${dayAvl?"Free":"— Unavailable"}</span>`;
-      return`<div class="tl-row" style="background:${isB?"#fafff8":slot.status==="dsm"?"#faf8f0":""}">
-        <div class="tl-time" style="color:${isB?i.color:"#ccc"}">${fmtTime(slot.time)}</div>
+      else if (isF) cell = `<span class="badge bg-a">⏳ Candidate filling form (${FILL_TIMEOUT_MS/60000} min limit)</span>`;
+      else if (isD) cell = `<span class="mono" style="font-size:12px;color:#999;
+        background:#f0ece4;padding:3px 10px;border-radius:6px">🔒 DSM</span>`;
+      else cell = `<span class="mono" style="font-size:12px;color:${dayAvl?'#ddd':'#eee'}">
+        ${dayAvl ? 'Free' : '— Unavailable'}</span>`;
+
+      return `<div class="tl-row" style="background:${isB?'#fafff8':''}">
+        <div class="tl-time" style="color:${isB?iv.color:isD?'#bbb':'#ccc'}">${fmtTime(slot.time)}</div>
         <div class="tl-cell">${cell}</div>
-      </div>`;}).join("");
+      </div>`;
+    }).join('');
 
-    const detailRows = dayBooked.sort((a,b)=>a.time.localeCompare(b.time)).map(s=>`<tr>
-      <td class="mono" style="color:${i.color};font-weight:700;white-space:nowrap">${fmtTime(s.time)}</td>
+    const detailRows = dayBooked.sort((a,b)=>a.time.localeCompare(b.time)).map(s => `<tr>
+      <td class="mono" style="color:${iv.color};font-weight:700;white-space:nowrap">${fmtTime(s.time)}</td>
       <td><strong>${esc(s.name)}</strong></td>
-      <td class="mono" style="color:#c8944a;font-size:12px">⏱ ${esc(s.duration||"30 min")}</td>
-      <td style="color:#555">${esc(s.position||"—")}</td>
-      <td class="mono" style="font-size:11px;color:#888">${esc(s.experience||"—")}</td>
-      <td class="mono" style="font-size:11px;color:#aaa">${esc(s.email)}<br>${esc(s.phone||"")}</td>
-      <td style="font-size:12px;color:#888;font-style:italic;max-width:130px">${esc(s.notes||"—")}</td>
-      <td style="text-align:center"><button class="cancel-btn" onclick="openCancelModal('${s.id}')">✕ Cancel</button></td>
-    </tr>`).join("");
+      <td class="mono" style="font-size:11px;color:#c8944a">⏱ ${esc(s.duration||'30 min')}</td>
+      <td style="color:#555">${esc(s.position||'—')}</td>
+      <td class="mono" style="font-size:11px;color:#888">${esc(s.experience||'—')}</td>
+      <td class="mono" style="font-size:11px;color:#aaa">
+        ${esc(s.email)}<br>${esc(s.phone||'')}</td>
+      <td style="font-size:12px;color:#888;font-style:italic">${esc(s.notes||'—')}</td>
+      <td style="text-align:center">
+        <button class="cancel-btn" onclick="openCancelModal('${s.id}')">✕ Cancel</button></td>
+    </tr>`).join('');
 
-    // Cancelled log for this day
-    const cancelRows = dayCancelLog.map(l=>`<tr style="background:#fff8f8">
+    const cancelRows = dayCancelLog.map(l => `<tr style="background:#fff8f8">
       <td class="mono" style="color:#f0b0b0;font-weight:600">${fmtTime(l.time)}</td>
       <td style="color:#aaa">${esc(l.name)}</td>
       <td class="mono" style="font-size:11px;color:#ccc">${esc(l.email)}</td>
       <td class="mono" style="font-size:11px;color:#c0392b">${fmtAt(l.cancelledAt)}</td>
       <td class="mono" style="font-size:11px;color:#aaa">by ${esc(l.cancelledBy)}</td>
       <td><span class="badge bg-g" style="font-size:9px">Slot freed ✓</span></td>
-    </tr>`).join("");
+    </tr>`).join('');
 
-    app.innerHTML=`<div class="view">
-      ${hdr("Admin — "+i.full,"goLanding()")}
-      <div style="background:#fff;border:1px solid #e8e2d8;border-radius:14px;padding:18px 22px;
-        display:flex;align-items:center;gap:16px;margin-bottom:22px;flex-wrap:wrap">
-        <div style="width:52px;height:52px;border-radius:50%;background:${i.color};
+    app.innerHTML = `<div class="view">
+      ${hdr('Admin — ' + iv.full, 'goLanding()')}
+      <!-- Profile -->
+      <div style="background:#fff;border:1px solid #e8e2d8;border-radius:13px;padding:16px 20px;
+        display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="width:50px;height:50px;border-radius:50%;background:${iv.color};
           display:flex;align-items:center;justify-content:center;color:#fff;
-          font-family:'DM Mono',monospace;font-size:16px;font-weight:500;flex-shrink:0">${i.ini}</div>
+          font-family:'DM Mono',monospace;font-size:15px;font-weight:500;flex-shrink:0">
+          ${iv.ini}</div>
         <div style="flex:1">
-          <div style="font-weight:700;font-size:17px">${i.full}</div>
-          <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap">
+          <div style="font-weight:700;font-size:16px">${iv.full}</div>
+          <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap">
             <span class="badge bg-a" style="font-size:9px">🔐 Admin</span>
-            <span class="badge bg-g" style="font-size:9px">Cancel = slot freed for others</span>
+            <span class="badge bg-g" style="font-size:9px">Cancel = slot freed instantly</span>
           </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          ${[["Today",todayB,i.color],["Booked",totalBooked,"#6ec89a"],["Cancelled",totalCancelled,"#e53e3e"]].map(([l,v,c])=>`
-            <div class="stat-box"><div class="stat-num" style="color:${c}">${v}</div><div class="stat-lbl">${l}</div></div>`).join("")}
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          ${[['Today',todayB,iv.color],['Booked',totalBooked,'#6ec89a'],['Cancelled',totalCancelled,'#e53e3e']].map(([l,v,c])=>`
+            <div class="stat-box">
+              <div class="stat-num" style="color:${c}">${v}</div>
+              <div class="stat-lbl">${l}</div>
+            </div>`).join('')}
         </div>
       </div>
-
-      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:18px">${dayTabs}</div>
-
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <!-- Day tabs -->
+      <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px">
+        ${dayTabs}
+      </div>
+      <!-- Day header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        margin-bottom:13px;flex-wrap:wrap;gap:9px">
         <div>
-          <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700">
-            ${dayName(activeDate)}${activeDate===todayStr?' <span class="badge bg-a" style="font-size:10px;vertical-align:middle;margin-left:6px">Today</span>':""}
+          <div style="font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700">
+            ${dayName(activeDate)}
+            ${activeDate===todayStr?`<span class="badge bg-a" style="font-size:9px;vertical-align:middle;margin-left:5px">Today</span>`:''}
           </div>
           <div class="mono" style="font-size:11px;color:#aaa;margin-top:2px">${fmtDate(activeDate)}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          ${dayBooked.length>0?`<span class="badge bg-g">${dayBooked.length} booked</span>`:""}
-          ${dayCancelLog.length>0?`<span class="badge bg-r">${dayCancelLog.length} cancelled</span>`:""}
-          <span class="badge ${dayAvl?"bg-g":"bg-r"}">${dayAvl?"✓ Available":"✗ Unavailable"}</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="mono" style="font-size:11px;color:#aaa">${dayAvl?"Mark unavailable":"Mark available"}</span>
+        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+          ${dayBooked.length > 0 ? `<span class="badge bg-g">${dayBooked.length} booked</span>` : ''}
+          ${dayCancelLog.length > 0 ? `<span class="badge bg-r">${dayCancelLog.length} cancelled</span>` : ''}
+          <span class="badge ${dayAvl?'bg-g':'bg-r'}">${dayAvl?'✓ Available':'✗ Unavailable'}</span>
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="mono" style="font-size:11px;color:#aaa">
+              ${dayAvl?'Mark unavailable':'Mark available'}</span>
             <label class="tog">
-              <input type="checkbox" ${dayAvl?"checked":""} onchange="toggleAvail('${i.id}','${activeDate}',this.checked)"/>
+              <input type="checkbox" ${dayAvl?'checked':''} 
+                onchange="toggleAvail('${iv.id}','${activeDate}',this.checked)"/>
               <span class="sli"></span>
             </label>
           </div>
         </div>
       </div>
-
+      <!-- Timeline -->
       <div class="card" style="margin-bottom:4px">
-        <div style="padding:10px 16px;background:#faf8f4;border-bottom:1px solid #ede8e0;
+        <div style="padding:9px 14px;background:#faf8f4;border-bottom:1px solid #ede8e0;
           display:flex;align-items:center;justify-content:space-between">
-          <span class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.12em">
-            Timeline · 9:00 AM – 8:00 PM · 30-min slots
-          </span>
-          <span class="mono" style="font-size:10px;color:#aaa">${daySlots.filter(s=>s.status==="available").length} free</span>
+          <span class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+            letter-spacing:.12em">Timeline · 9:00 AM – 8:00 PM · 30-min slots</span>
+          <span class="mono" style="font-size:10px;color:#aaa">
+            ${daySlots.filter(s=>s.status==='available').length} free</span>
         </div>
         ${tlRows}
       </div>
-
-      ${dayBooked.length>0?`
-        <div style="margin-top:22px">
-          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
+      ${dayBooked.length > 0 ? `
+        <div style="margin-top:20px">
+          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+            letter-spacing:.13em;margin-bottom:11px">
             📋 Booked — ${dayName(activeDate)} (${dayBooked.length})
           </div>
-          <div class="card">
-            <table><thead><tr><th>Time</th><th>Candidate</th><th>Duration</th><th>Position</th><th>Experience</th><th>Contact</th><th>Notes</th><th>Action</th></tr></thead>
+          <div class="card" style="overflow-x:auto">
+            <table><thead><tr>
+              <th>Time</th><th>Candidate</th><th>Duration</th><th>Position</th>
+              <th>Experience</th><th>Contact</th><th>Notes</th><th>Action</th>
+            </tr></thead>
             <tbody>${detailRows}</tbody></table>
           </div>
-        </div>`:""}
-
-      ${dayCancelLog.length>0?`
-        <div style="margin-top:20px">
-          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
-            📋 Cancellation Log — ${dayName(activeDate)} (${dayCancelLog.length}) · Slots freed &amp; available again
+        </div>` : ''}
+      ${dayCancelLog.length > 0 ? `
+        <div style="margin-top:18px">
+          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+            letter-spacing:.13em;margin-bottom:11px">
+            ✗ Cancelled — ${dayName(activeDate)} (${dayCancelLog.length}) · Slots freed
           </div>
-          <div class="card">
-            <table><thead><tr><th>Time</th><th>Candidate</th><th>Email</th><th>Cancelled At</th><th>By</th><th>Slot Status</th></tr></thead>
+          <div class="card" style="overflow-x:auto">
+            <table><thead><tr>
+              <th>Time</th><th>Candidate</th><th>Email</th>
+              <th>Cancelled At</th><th>By</th><th>Status</th>
+            </tr></thead>
             <tbody>${cancelRows}</tbody></table>
           </div>
-        </div>`:""}
-
-      <div style="margin-top:22px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="S.view='iv-select';render()" style="font-size:12px">← Switch</button>
+        </div>` : ''}
+      <div style="margin-top:20px;display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="S.view='iv-select';render()"
+          style="font-size:12px">← Switch</button>
         <button class="btn btn-ghost" onclick="goLanding()" style="font-size:12px">🏠 Home</button>
       </div>
     </div>`;
@@ -825,146 +1011,194 @@ function render(){
   }
 
   // ── CANDIDATE BOARD ───────────────────────────────────────────────────────
-  if(view==="candidate"){
-    const ivSummary = IVS.map(i=>{
-      const avl = getAvail(i.id,todayStr);
-      const booked = visibleSlots.filter(s=>s.ivId===i.id&&s.status==="booked").length;
-      const open = visibleSlots.filter(s=>s.ivId===i.id&&s.status==="available").length;
-      return`<div style="background:#fff;border:1.5px solid #e8e2d8;border-radius:13px;padding:14px 18px;display:flex;align-items:center;gap:13px">
-        <div style="width:42px;height:42px;border-radius:50%;background:${i.color};
+  if (view === 'candidate') {
+    const ivSummary = IVS.map(iv => {
+      const avl    = getAvail(iv.id, todayStr);
+      const booked = visibleSlots.filter(s=>s.ivId===iv.id&&s.status==='booked').length;
+      const open   = visibleSlots.filter(s=>s.ivId===iv.id&&s.status==='available').length;
+      return `<div style="background:#fff;border:1.5px solid #e8e2d8;border-radius:12px;
+        padding:13px 16px;display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:50%;background:${iv.color};
           display:flex;align-items:center;justify-content:center;color:#fff;
-          font-family:'DM Mono',monospace;font-size:13px;flex-shrink:0">${i.ini}</div>
+          font-family:'DM Mono',monospace;font-size:13px;flex-shrink:0">${iv.ini}</div>
         <div>
-          <div style="font-weight:600;font-size:14px">${i.full}</div>
-          <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">
-            <span class="badge ${avl?"bg-g":"bg-r"}" style="font-size:9px">${avl?"✓ Available today":"✗ Unavailable today"}</span>
+          <div style="font-weight:600;font-size:14px">${iv.full}</div>
+          <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
+            <span class="badge ${avl?'bg-g':'bg-r'}" style="font-size:9px">
+              ${avl?'✓ Available today':'✗ Unavailable today'}</span>
             <span class="badge bg-b" style="font-size:9px">${booked} booked</span>
             <span class="badge bg-a" style="font-size:9px">${open} open</span>
           </div>
         </div>
-      </div>`;}).join("");
+      </div>`;
+    }).join('');
 
-    const sections = dates.map(date=>{
-      const kkS = visibleSlots.filter(s=>s.ivId==="kk"&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
-      const rrS = visibleSlots.filter(s=>s.ivId==="rr"&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
-      const kkAvl = getAvail("kk",date), rrAvl = getAvail("rr",date);
-      const bookedCount = [...kkS,...rrS].filter(s=>s.status==="booked").length;
-      const allTimes = [...new Set([...kkS,...rrS].map(s=>s.time))].sort();
-      const isToday = date===todayStr;
+    const sections = dates.map(date => {
+      const kkSlots = visibleSlots.filter(s=>s.ivId==='kk'&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+      const rrSlots = visibleSlots.filter(s=>s.ivId==='rr'&&s.date===date).sort((a,b)=>a.time.localeCompare(b.time));
+      const kkAvl   = getAvail('kk', date);
+      const rrAvl   = getAvail('rr', date);
+      const bookedCount = [...kkSlots,...rrSlots].filter(s=>s.status==='booked').length;
+      const allTimes = [...new Set([...kkSlots,...rrSlots].map(s=>s.time))].sort();
 
-      const slotCell=(slot,iObj,ivAvl)=>{
-        if(!slot) return`<td style="padding:8px 12px;border-left:1px solid #f0ece4;color:#eee;font-size:11px">—</td>`;
-        const isB=slot.status==="booked", isF=slot.status==="filling";
-        // isF means THIS slot is being filled by someone right now
-        // Available slots always show Register → ; concurrency check happens on click inside goRegister()
-        const na = slot.status==="available" && !ivAvl;
-        return`<td style="padding:8px 12px;border-left:1px solid #f0ece4;background:${isB?"#f4fbf7":isF?"#fffbf0":"#fff"}">
-          ${slot.status==="dsm"
-            ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:#888;
-                background:#f0ece4;padding:4px 10px;border-radius:6px;font-weight:500">DSM</span>`
-            : isB?`<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
-            <div class="mono" style="font-size:10px;color:#aaa;margin-top:2px">Duration: ${slot.duration||"30 min"} (${fmtTime(slot.time)} – ${fmtEndTime(slot.time)})</div>
-            <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>`:
-          isF?`<span class="badge bg-a" style="font-size:9px">⏳ Being filled…</span>`:
-          na?`<span class="mono" style="font-size:11px;color:#ddd">Unavailable</span>`:
-          `<button onclick="goRegister('${slot.id}')"
-            style="padding:6px 12px;background:${iObj.color};color:#fff;
-            border:none;border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
-            cursor:pointer;transition:all .15s">Register →</button>`}
-        </td>`;};
+      const slotCell = (slot, iv, ivAvl) => {
+        if (!slot) return `<td style="padding:8px 11px;border-left:1px solid #f0ece4;color:#eee;font-size:11px">—</td>`;
+        const isB = slot.status === 'booked';
+        const isF = slot.status === 'filling';
+        const isD = slot.status === 'dsm';
+        const na  = slot.status === 'available' && !ivAvl;
+        const canR= slot.status === 'available' && ivAvl;
+        return `<td style="padding:8px 11px;border-left:1px solid #f0ece4;
+          background:${isB?'#f4fbf7':isF?'#fffbf0':'#fff'}">
+          ${isD ? `<span class="mono" style="font-size:11px;color:#aaa;
+              background:#f0ece4;padding:3px 8px;border-radius:5px">DSM</span>`
+            : isB ? `<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
+              <div class="mono" style="font-size:10px;color:#aaa;margin-top:2px">
+                Duration: ${esc(slot.duration||'30 min')} (${fmtTime(slot.time)} – ${fmtEndTime(slot.time)})</div>
+              <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>`
+            : isF ? `<span class="badge bg-a" style="font-size:9px">⏳ Being registered…</span>`
+            : na  ? `<span class="mono" style="font-size:11px;color:#ddd">Unavailable</span>`
+            : `<button onclick="startRegister('${slot.id}')"
+                style="padding:6px 11px;background:${iv.color};color:#fff;border:none;
+                border-radius:7px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;
+                cursor:pointer;transition:all .15s">Register →</button>`}
+        </td>`;
+      };
 
-      return`<div style="margin-bottom:28px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <span style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700">${dayName(date)}</span>
-          ${isToday?`<span class="badge bg-a" style="font-size:9px">Today</span>`:""}
+      return `<div style="margin-bottom:26px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap">
+          <span style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700">
+            ${dayName(date)}</span>
+          ${date===todayStr?`<span class="badge bg-a" style="font-size:9px">Today</span>`:''}
           <span class="mono" style="font-size:11px;color:#aaa">${fmtDate(date)}</span>
-          ${bookedCount>0?`<span class="badge bg-b" style="font-size:9px">${bookedCount} booked</span>`:""}
-          ${!(kkAvl||rrAvl)?`<span class="badge bg-r" style="font-size:9px">Both unavailable</span>`:""}
-          <div style="flex:1;height:1px;background:#e8e2d8;min-width:20px"></div>
+          ${bookedCount>0?`<span class="badge bg-b" style="font-size:9px">${bookedCount} booked</span>`:''}
+          ${!(kkAvl||rrAvl)?`<span class="badge bg-r" style="font-size:9px">Both unavailable</span>`:''}
+          <div style="flex:1;height:1px;background:#e8e2d8;min-width:16px"></div>
         </div>
         <div class="card">
           <table><thead><tr>
-            <th style="width:90px">Time</th>
-            <th><span style="display:inline-flex;align-items:center;gap:6px">
+            <th style="width:86px">Time</th>
+            <th><span style="display:inline-flex;align-items:center;gap:5px">
               <span style="width:8px;height:8px;border-radius:50%;background:#c8944a;display:inline-block"></span>
-              Kondareddy ${!kkAvl?'<span class="badge bg-r" style="font-size:8px;margin-left:4px">Unavailable</span>':""}</span></th>
-            <th><span style="display:inline-flex;align-items:center;gap:6px">
+              Kondareddy ${!kkAvl?`<span class="badge bg-r" style="font-size:8px;margin-left:3px">Unavailable</span>`:''}</span></th>
+            <th><span style="display:inline-flex;align-items:center;gap:5px">
               <span style="width:8px;height:8px;border-radius:50%;background:#4a90c8;display:inline-block"></span>
-              Ramireddy ${!rrAvl?'<span class="badge bg-r" style="font-size:8px;margin-left:4px">Unavailable</span>':""}</span></th>
+              Ramireddy ${!rrAvl?`<span class="badge bg-r" style="font-size:8px;margin-left:3px">Unavailable</span>`:''}</span></th>
           </tr></thead>
-          <tbody>${allTimes.map(time=>`<tr>
-            <td class="mono" style="padding:8px 12px;font-size:12px;color:#999;white-space:nowrap;background:#faf8f4">${fmtTime(time)}</td>
-            ${slotCell(kkS.find(s=>s.time===time),IVS[0],kkAvl)}
-            ${slotCell(rrS.find(s=>s.time===time),IVS[1],rrAvl)}
-          </tr>`).join("")}</tbody></table>
+          <tbody>${allTimes.map(time => `<tr>
+            <td class="mono" style="padding:8px 11px;font-size:12px;color:#999;
+              white-space:nowrap;background:#faf8f4">${fmtTime(time)}</td>
+            ${slotCell(kkSlots.find(s=>s.time===time), IVS[0], kkAvl)}
+            ${slotCell(rrSlots.find(s=>s.time===time), IVS[1], rrAvl)}
+          </tr>`).join('')}</tbody></table>
         </div>
-      </div>`;}).join("");
+      </div>`;
+    }).join('');
 
-    app.innerHTML=`<div class="view">
-      ${hdr("Candidate portal · 30-min slots · 9 AM – 8 PM","goLanding()")}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">${ivSummary}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px">
-        <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em">📅 Interview Slots</div>
-        <div style="display:flex;gap:8px;align-items:center">
-
-          <button class="btn btn-ghost" onclick="loadData()" style="font-size:11px;padding:6px 12px">↻ Refresh</button>
-        </div>
+    app.innerHTML = `<div class="view">
+      ${hdr('Candidate portal · 30-min slots · 9 AM – 8 PM', 'goLanding()')}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:22px">
+        ${ivSummary}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        margin-bottom:16px;flex-wrap:wrap;gap:7px">
+        <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+          letter-spacing:.13em">📅 Interview Slots</div>
+        <button class="btn btn-ghost" onclick="refreshData()"
+          style="font-size:11px;padding:6px 12px">↻ Refresh</button>
       </div>
       ${sections}
-      ${bookedAll.length>0?`
+      ${bookedAll.length > 0 ? `
         <div style="margin-top:8px">
-          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:12px">
+          <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+            letter-spacing:.13em;margin-bottom:11px">
             ✅ All Registered Candidates (${bookedAll.length})
           </div>
-          <div class="card"><table>
-            <thead><tr><th>Candidate</th><th>Interviewer</th><th>Day</th><th>Date</th><th>Time</th><th>Position</th></tr></thead>
-            <tbody>${bookedAll.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)).map((s,idx)=>{
-              const i=iv(s.ivId);
-              return`<tr style="background:${idx%2?"#fdfcf8":"#fff"}">
-                <td><strong>${esc(s.name)}</strong><div class="mono" style="font-size:11px;color:#aaa">${esc(s.email)}</div></td>
-                <td><span style="display:inline-flex;align-items:center;gap:6px">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${i.color};display:inline-block"></span>${i.name}</span></td>
-                <td class="mono" style="font-size:12px;color:#888">${dayName(s.date)}</td>
-                <td class="mono" style="font-size:12px;color:#888">${fmtDate(s.date)}</td>
-                <td class="mono" style="color:${i.color};font-weight:600">${fmtTime(s.time)}</td>
-                <td style="color:#666">${esc(s.position||"—")}</td>
-              </tr>`;}).join("")}
+          <div class="card" style="overflow-x:auto"><table>
+            <thead><tr>
+              <th>Candidate</th><th>Interviewer</th><th>Day</th>
+              <th>Date</th><th>Time</th><th>Duration</th><th>Position</th>
+            </tr></thead>
+            <tbody>${bookedAll.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time))
+              .map((s, idx) => {
+                const iv = ivById(s.ivId);
+                return `<tr style="background:${idx%2?'#fdfcf8':'#fff'}">
+                  <td><strong>${esc(s.name)}</strong>
+                    <div class="mono" style="font-size:11px;color:#aaa">${esc(s.email)}</div></td>
+                  <td><span style="display:inline-flex;align-items:center;gap:5px">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${iv.color};display:inline-block"></span>
+                    ${iv.name}</span></td>
+                  <td class="mono" style="font-size:12px;color:#888">${dayName(s.date)}</td>
+                  <td class="mono" style="font-size:12px;color:#888">${fmtDate(s.date)}</td>
+                  <td class="mono" style="color:${iv.color};font-weight:600">${fmtTime(s.time)}</td>
+                  <td class="mono" style="font-size:12px;color:#888">${esc(s.duration||'30 min')}</td>
+                  <td style="color:#666">${esc(s.position||'—')}</td>
+                </tr>`;
+              }).join('')}
             </tbody></table></div>
-        </div>`:""}
+        </div>` : ''}
     </div>`;
     return;
   }
 
-  // ── FORM ─────────────────────────────────────────────────────────────────
-  if(view==="form"){
-    const slot = slots.find(s=>s.id===S.activeSlotId);
-    const i = slot ? iv(slot.ivId) : IVS[0];
-    app.innerHTML=`<div class="view">
-      ${hdr("Register for interview","cancelForm()")}
-      <div style="max-width:540px;margin:0 auto">
-        <div style="background:#fff;border:2px solid ${i.color}38;border-radius:13px;padding:18px 22px;margin-bottom:22px">
-          <span class="lbl" style="color:${i.color}">Your Confirmed Slot</span>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px">
-            <div><span class="lbl">Interviewer</span>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-                <span style="width:8px;height:8px;border-radius:50%;background:${i.color};display:inline-block"></span>
-                <span style="font-weight:600;font-size:13px">${i.name}</span>
-              </div></div>
-            <div><span class="lbl">Date</span>
-              <div style="font-weight:500;font-size:13px;margin-top:2px">${slot?dayName(slot.date)+", "+fmtDate(slot.date):"—"}</div></div>
-            <div><span class="lbl">Time</span>
-              <div style="font-weight:700;font-size:15px;color:${i.color};margin-top:2px">${slot?fmtTime(slot.time):"—"}</div></div>
+  // ── REGISTRATION FORM ─────────────────────────────────────────────────────
+  if (view === 'form') {
+    const slot = slots.find(s => s.id === S.activeSlotId) ||
+                 S.slots.find(s => s.id === S.activeSlotId);
+    const iv   = slot ? ivById(slot.ivId) : IVS[0];
+    app.innerHTML = `<div class="view">
+      ${hdr('Register for interview', 'cancelForm()')}
+      <div style="max-width:520px;margin:0 auto">
+        <!-- Slot info -->
+        <div style="background:#fff;border:2px solid ${iv.color}40;border-radius:12px;
+          padding:16px 20px;margin-bottom:20px">
+          <span class="lbl" style="color:${iv.color}">Your Confirmed Slot</span>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:3px">
+            <div>
+              <span class="lbl">Interviewer</span>
+              <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                <span style="width:8px;height:8px;border-radius:50%;background:${iv.color};display:inline-block"></span>
+                <span style="font-weight:600;font-size:13px">${iv.name}</span>
+              </div>
+            </div>
+            <div>
+              <span class="lbl">Date</span>
+              <div style="font-weight:500;font-size:13px;margin-top:2px">
+                ${slot ? dayName(slot.date)+', '+fmtDate(slot.date) : '—'}</div>
+            </div>
+            <div>
+              <span class="lbl">Time</span>
+              <div style="font-weight:700;font-size:14px;color:${iv.color};margin-top:2px">
+                ${slot ? fmtTime(slot.time) : '—'}</div>
+            </div>
           </div>
         </div>
-        <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.13em;margin-bottom:14px">Your Details</div>
-        <div class="fg" style="margin-bottom:14px">
-          <div class="s2"><span class="lbl">Full Name *</span><input id="fn" placeholder="Your full name"/></div>
-          <div><span class="lbl">Email *</span><input id="fe" type="email" placeholder="you@email.com"/></div>
-          <div><span class="lbl">Phone</span><input id="fp" type="tel" placeholder="+91 98765 43210"/></div>
-          <div><span class="lbl">Position Applied</span><input id="fpo" placeholder="e.g. Software Engineer"/></div>
-          <div><span class="lbl">Years of Experience</span><input id="fex" placeholder="e.g. 4 years"/></div>
-          <div class="s2"><span class="lbl">Interview Duration *</span>
-            <select id="fdur">
+        <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
+          letter-spacing:.13em;margin-bottom:13px">Your Details</div>
+        <div class="fg" style="margin-bottom:12px">
+          <div class="s2">
+            <span class="lbl">Full Name *</span>
+            <input id="f-name" placeholder="Your full name"/>
+          </div>
+          <div>
+            <span class="lbl">Email *</span>
+            <input id="f-email" type="email" placeholder="you@email.com"/>
+          </div>
+          <div>
+            <span class="lbl">Phone</span>
+            <input id="f-phone" type="tel" placeholder="+91 98765 43210"/>
+          </div>
+          <div>
+            <span class="lbl">Position Applied</span>
+            <input id="f-position" placeholder="e.g. Software Engineer"/>
+          </div>
+          <div>
+            <span class="lbl">Years of Experience</span>
+            <input id="f-exp" placeholder="e.g. 4 years"/>
+          </div>
+          <div>
+            <span class="lbl">Interview Duration *</span>
+            <select id="f-dur">
               <option value="">Select duration</option>
               <option value="30 min">30 min</option>
               <option value="1 hr">1 hr</option>
@@ -972,69 +1206,65 @@ function render(){
               <option value="2 hrs">2 hrs</option>
             </select>
           </div>
-          <div class="s2"><span class="lbl">Notes for Interviewer</span>
-            <textarea id="fnt" placeholder="Anything you'd like the interviewer to know…"></textarea></div>
+          <div class="s2">
+            <span class="lbl">Notes for Interviewer</span>
+            <textarea id="f-notes" placeholder="Anything you'd like the interviewer to know…"></textarea>
+          </div>
         </div>
-        <div style="display:flex;gap:10px">
+        <div style="display:flex;gap:9px">
           <button class="btn btn-ghost" onclick="cancelForm()">Cancel</button>
-          <button class="btn btn-amber" id="sbtn" onclick="submitForm()" style="flex:1">Confirm Registration →</button>
+          <button class="btn btn-amber" id="submit-btn" onclick="submitForm()" style="flex:1">
+            Confirm Registration →
+          </button>
         </div>
-        <p class="mono" style="text-align:center;font-size:10px;color:#ccc;margin-top:9px">* Required · Slot held for 8 minutes</p>
+        <p class="mono" style="text-align:center;font-size:10px;color:#ccc;margin-top:8px">
+          * Required · Slot held for 8 minutes
+        </p>
       </div>
     </div>`;
     return;
   }
 
   // ── SUCCESS ───────────────────────────────────────────────────────────────
-  if(view==="success"){
-    const s=S.successSlot; const i=s?iv(s.ivId):IVS[0];
-    app.innerHTML=`<div class="view" style="text-align:center;padding:40px 20px;max-width:460px;margin:0 auto">
-      ${hdr("Registration confirmed","goLanding()")}
-      <div style="font-size:56px;margin:8px 0 14px">🎉</div>
-      <h2 style="font-family:'Playfair Display',serif;font-size:1.9rem;color:#1a1a2e;margin-bottom:8px">
-        All set, ${esc(s?.name?.split(" ")[0])}!
+  if (view === 'success') {
+    const s  = S.successSlot;
+    const iv = s ? ivById(s.ivId) : IVS[0];
+    app.innerHTML = `<div class="view" style="text-align:center;padding:36px 20px;
+      max-width:440px;margin:0 auto">
+      ${hdr('Registration confirmed', 'goLanding()')}
+      <div style="font-size:54px;margin:6px 0 12px">🎉</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:1.8rem;color:#1a1a2e;margin-bottom:7px">
+        All set, ${esc(s?.name?.split(' ')[0])}!
       </h2>
-      <p style="color:#888;font-size:14px;margin-bottom:22px;line-height:1.7">
-        Your interview is confirmed. Please be ready at the time below.
+      <p style="color:#888;font-size:14px;margin-bottom:20px;line-height:1.7">
+        Your interview is confirmed. Be ready at the time below.
       </p>
-      <div style="background:#fff;border:2px solid ${i.color}38;border-radius:13px;padding:20px 26px;margin-bottom:22px;text-align:left">
-        ${[["Interviewer",i.full],["Day",s?dayName(s.date):""],["Date",s?fmtDate(s.date):""],["Time",s?fmtTime(s.time):""],["Duration",s?.duration||"30 min"],["Position",s?.position||"—"]].map(([l,v])=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0ece4">
+      <div style="background:#fff;border:2px solid ${iv.color}38;border-radius:12px;
+        padding:18px 24px;margin-bottom:20px;text-align:left">
+        ${[
+          ['Interviewer', iv.full],
+          ['Day',  s ? dayName(s.date) : ''],
+          ['Date', s ? fmtDate(s.date) : ''],
+          ['Time', s ? fmtTime(s.time) : ''],
+          ['Duration', s?.duration || '30 min'],
+          ['Position', s?.position || '—'],
+        ].map(([l,v]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;
+            padding:7px 0;border-bottom:1px solid #f0ece4">
             <span class="lbl">${l}</span>
             <span style="font-size:14px;font-weight:600;color:#1a1a2e">${esc(v)}</span>
-          </div>`).join("")}
+          </div>`).join('')}
       </div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="S.view='candidate';S.successSlot=null;render()">← View Schedule</button>
+      <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="S.view='candidate';S.successSlot=null;render()">
+          ← View Schedule</button>
         <button class="btn btn-dark" onclick="goLanding()">🏠 Home</button>
       </div>
     </div>`;
   }
 }
 
-
-async function loadData(){
-  try{
-    const data=await jReadWithRetry();
-    S.slots=applyDSMRule(expireStale(data.slots||[]));
-    S.avail=data.avail||{};
-    S.cancelLog=data.cancelLog||[];
-    render(); toast("✅ Refreshed.");
-  }catch{
-    // Try cache
-    const cached=loadCache();
-    if(cached){
-      S.slots=applyDSMRule(expireStale(cached.slots||[]));
-      S.avail=cached.avail||{};
-      S.cancelLog=cached.cancelLog||[];
-      render(); // silently loaded from cache
-    } else {
-      toast("⚠️ No connection. Please check internet and try again.");
-    }
-  }
-}
-
-
+boot();
 </script>
 </body>
 </html>
