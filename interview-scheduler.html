@@ -138,7 +138,7 @@ const DAYS  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satu
 const SID   = Math.random().toString(36).slice(2, 10); // unique session id per tab
 const JB    = 'https://api.jsonbin.io/v3';
 const DAYS_AHEAD = 7;         // rolling window: today + 6 more days
-const FILL_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutes
+const FILL_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -460,7 +460,7 @@ async function cancelForm() {
       S.avail     = result.avail;
       S.cancelLog = result.cancelLog;
     } catch (_) {
-      // If release fails, the slot will auto-expire after 8 minutes
+      // If release fails, the slot will auto-expire after 2 minutes
     }
   }
   S.activeSlotId = null;
@@ -875,7 +875,7 @@ function render() {
             ${esc(slot.position)}</span>` : ''}
           <button class="cancel-btn" onclick="openCancelModal('${slot.id}')">✕ Cancel</button>
         </div>`;
-      else if (isF) cell = `<span class="badge bg-a">⏳ Candidate filling form (${FILL_TIMEOUT_MS/60000} min limit)</span>`;
+      else if (isF) cell = `<span class="badge bg-a">⏳ Being registered… (2 min)</span>`;
       else if (isD) cell = `<span class="mono" style="font-size:12px;color:#999;
         background:#f0ece4;padding:3px 10px;border-radius:6px">🔒 DSM</span>`;
       else cell = `<span class="mono" style="font-size:12px;color:${dayAvl?'#ddd':'#eee'}">
@@ -1218,7 +1218,7 @@ function render() {
           </button>
         </div>
         <p class="mono" style="text-align:center;font-size:10px;color:#ccc;margin-top:8px">
-          * Required · Slot held for 8 minutes
+          * Required · Slot held for 2 minutes
         </p>
       </div>
     </div>`;
