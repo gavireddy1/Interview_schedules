@@ -263,7 +263,23 @@ function processSlots(rawSlots) {
 const CACHE_KEY = 'iv_v3';
 
 function saveCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    // Also keep a timestamped rolling backup (last 3 saves)
+    const ts = Date.now();
+    const bk = JSON.parse(localStorage.getItem('iv_backups') || '[]');
+    bk.unshift({ ts, data });
+    if (bk.length > 3) bk.length = 3; // keep only last 3
+    localStorage.setItem('iv_backups', JSON.stringify(bk));
+  } catch (_) {}
+}
+
+// Get most recent local backup
+function getLocalBackup() {
+  try {
+    const bk = JSON.parse(localStorage.getItem('iv_backups') || '[]');
+    return bk.length > 0 ? bk[0] : null;
+  } catch (_) { return null; }
 }
 
 function loadCache() {
@@ -652,6 +668,116 @@ window.addEventListener('beforeunload', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // UI HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// BACKUP & RESTORE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Export all data as a downloadable JSON backup file
+async function exportBackup() {
+  try {
+    let data;
+    try { data = await apiReadWithRetry(); }
+    catch (_) { data = loadCache(); }
+    if (!data) { toast('No data to backup.'); return; }
+
+    const booked = (data.slots || []).filter(s => s.status === 'booked');
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      totalBooked: booked.length,
+      slots: data.slots || [],
+      avail: data.avail || {},
+      cancelLog: data.cancelLog || [],
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `interview-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`✅ Backup downloaded! ${booked.length} bookings saved.`);
+  } catch (e) {
+    toast('Backup failed. Please try again.');
+  }
+}
+
+// Export all bookings as CSV for spreadsheet use
+async function exportCSV() {
+  try {
+    let data;
+    try { data = await apiReadWithRetry(); }
+    catch (_) { data = loadCache(); }
+    if (!data) { toast('No data to export.'); return; }
+
+    const booked = (data.slots || []).filter(s => s.status === 'booked');
+    if (booked.length === 0) { toast('No bookings to export.'); return; }
+
+    const rows = [
+      ['Name','Email','Phone','Position','Experience','Duration','Notes','Interviewer','Date','Day','Time','Booked At']
+    ];
+    booked.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+      .forEach(s => {
+        const iv = ivById(s.ivId);
+        rows.push([
+          s.name || '', s.email || '', s.phone || '',
+          s.position || '', s.experience || '',
+          s.duration || '30 min', s.notes || '',
+          iv.full, s.date, dayName(s.date), fmtTime(s.time),
+          s.filledAt ? fmtAt(s.filledAt) : ''
+        ]);
+      });
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `interview-bookings-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`✅ CSV exported! ${booked.length} bookings.`);
+  } catch (e) {
+    toast('Export failed. Please try again.');
+  }
+}
+
+// Restore from a backup JSON file
+function restoreBackup() {
+  const input = document.createElement('input');
+  input.type  = 'file';
+  input.accept= '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if (!backup.slots || !Array.isArray(backup.slots)) {
+        toast('❌ Invalid backup file.'); return;
+      }
+      const booked = backup.slots.filter(s => s.status === 'booked').length;
+      if (!confirm(`Restore backup from ${backup.exportedAt ? new Date(backup.exportedAt).toLocaleString() : 'unknown date'}?\n\nThis will restore ${booked} bookings and OVERWRITE current data.`)) return;
+
+      await atomicUpdate(() => ({
+        slots: backup.slots,
+        avail: backup.avail || {},
+        cancelLog: backup.cancelLog || [],
+      }));
+      S.slots     = processSlots(backup.slots);
+      S.avail     = backup.avail || {};
+      S.cancelLog = backup.cancelLog || [];
+      toast(`✅ Restored! ${booked} bookings recovered.`);
+      render();
+    } catch (e) {
+      toast('❌ Restore failed. Invalid or corrupted backup file.');
+    }
+  };
+  input.click();
+}
+
 function goLanding()  { S.view = 'landing';  S.activeSlotId = null; render(); }
 function setDay(d)    { S.activeDay = d; render(); }
 
@@ -745,6 +871,13 @@ function render() {
             <span class="badge bg-b">Ramireddy</span>
           </div>
         </button>
+      </div>
+      <div style="background:#eef5ff;border:1px solid #90b8f0;border-radius:10px;
+        padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;
+        justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#1a4a90">
+          💾 <strong>Backup tip:</strong> Admins can export/backup data from the Admin panel.
+        </span>
       </div>
       <div class="mono" style="font-size:10px;color:#aaa;text-transform:uppercase;
         letter-spacing:.13em;margin-bottom:11px">
@@ -1019,10 +1152,17 @@ function render() {
             <tbody>${cancelRows}</tbody></table>
           </div>
         </div>` : ''}
-      <div style="margin-top:20px;display:flex;gap:7px;flex-wrap:wrap">
+      <div style="margin-top:20px;display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-ghost" onclick="S.view='iv-select';render()"
           style="font-size:12px">← Switch</button>
         <button class="btn btn-ghost" onclick="goLanding()" style="font-size:12px">🏠 Home</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost" onclick="exportCSV()"
+          style="font-size:12px;color:#1a4a90;border-color:#90b8f0">📊 Export CSV</button>
+        <button class="btn btn-ghost" onclick="exportBackup()"
+          style="font-size:12px;color:#1e6e44;border-color:#b0dfc0">💾 Backup</button>
+        <button class="btn btn-ghost" onclick="restoreBackup()"
+          style="font-size:12px;color:#8a5a10;border-color:#e8c878">📂 Restore</button>
       </div>
     </div>`;
     return;
