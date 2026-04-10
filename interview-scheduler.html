@@ -237,6 +237,19 @@ function expireFillingSlots(slots) {
   });
 }
 
+// Remove old slots to keep JSONBin under 100kb (free plan limit)
+// Keeps: all booked slots (history), today + future available slots
+// Removes: past available/filling/dsm slots (no longer needed)
+function pruneOldSlots(slots) {
+  const todayStr = localDate(0);
+  return slots.filter(s => {
+    if (s.date >= todayStr) return true;       // keep all future/today slots
+    if (s.status === 'booked') return true;    // keep all booked (history)
+    if (s.status === 'cancelled') return true; // keep cancelled history
+    return false;                              // remove old available/filling/dsm
+  });
+}
+
 // DSM rule: Kondareddy's 1:00 PM is blocked Mon–Fri
 // Applied to local display only — never written as "dsm" status to DB
 function applyDSM(slots) {
@@ -319,6 +332,20 @@ async function apiReadWithRetry(attempts = 4) {
 }
 
 async function apiWrite(data) {
+  // Prune old slots before writing to stay under 100kb free plan limit
+  const pruned = { ...data, slots: pruneOldSlots(data.slots || []) };
+  const body = JSON.stringify(pruned);
+
+  // Warn if still large (shouldn't happen after pruning)
+  const sizeKb = Math.round(body.length / 1024);
+  if (sizeKb > 90) {
+    // Extra aggressive prune: remove all past slots entirely
+    const todayStr = localDate(0);
+    pruned.slots = (data.slots || []).filter(s =>
+      s.date >= todayStr || s.status === 'booked'
+    );
+  }
+
   const r = await fetch(`${JB}/b/${CFG.binId}`, {
     method: 'PUT',
     headers: {
@@ -326,13 +353,13 @@ async function apiWrite(data) {
       'X-Master-Key': CFG.key,
       'X-Access-Key': CFG.key,
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(pruned),
   });
   if (!r.ok) {
     const errText = await r.text().catch(()=>'');
     throw new Error(`Write ${r.status}: ${errText}`);
   }
-  saveCache(data);
+  saveCache(pruned);
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -558,7 +585,8 @@ async function submitForm() {
     if (btn) { btn.disabled = false; btn.textContent = 'Confirm Registration →'; }
     if (e.message === 'TAKEN')    toast('Sorry, this slot was just booked by someone else. Please go back and pick another slot.');
     else if (e.message === 'BUSY') toast('Please wait a moment and try again.');
-    else toast('Error: ' + e.message);
+    else if (e.message && e.message.includes('100kb')) toast('Too much data. Please contact admin to clear old slots.');
+    else toast('Save failed. Please try again.');
   }
 }
 
