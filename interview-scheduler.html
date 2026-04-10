@@ -328,7 +328,10 @@ async function apiWrite(data) {
     },
     body: JSON.stringify(data),
   });
-  if (!r.ok) throw new Error(`Write ${r.status}`);
+  if (!r.ok) {
+    const errText = await r.text().catch(()=>'');
+    throw new Error(`Write ${r.status}: ${errText}`);
+  }
   saveCache(data);
 }
 
@@ -555,7 +558,7 @@ async function submitForm() {
     if (btn) { btn.disabled = false; btn.textContent = 'Confirm Registration →'; }
     if (e.message === 'TAKEN')    toast('Sorry, this slot was just booked by someone else. Please go back and pick another slot.');
     else if (e.message === 'BUSY') toast('Please wait a moment and try again.');
-    else toast('Save failed. Please check your connection and try again.');
+    else toast('Error: ' + e.message);
   }
 }
 
