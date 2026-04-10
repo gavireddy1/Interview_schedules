@@ -294,7 +294,11 @@ function loadCache() {
 // ═══════════════════════════════════════════════════════════════════════════════
 async function apiRead() {
   const r = await fetch(`${JB}/b/${CFG.binId}/latest`, {
-    headers: { 'X-Master-Key': CFG.key, 'X-Bin-Meta': 'false' },
+    headers: {
+      'X-Master-Key': CFG.key,
+      'X-Access-Key': CFG.key,
+      'X-Bin-Meta': 'false'
+    },
   });
   if (!r.ok) throw new Error(`Read ${r.status}`);
   const data = await r.json();
@@ -317,7 +321,11 @@ async function apiReadWithRetry(attempts = 4) {
 async function apiWrite(data) {
   const r = await fetch(`${JB}/b/${CFG.binId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-Master-Key': CFG.key },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': CFG.key,
+      'X-Access-Key': CFG.key,
+    },
     body: JSON.stringify(data),
   });
   if (!r.ok) throw new Error(`Write ${r.status}`);
@@ -658,10 +666,8 @@ window.addEventListener('beforeunload', () => {
     const upd = S.slots.map(s =>
       s.id === S.activeSlotId && s.sid === SID
         ? { ...s, status:'available', fillingAt:null, sid:null } : s);
-    navigator.sendBeacon && navigator.sendBeacon(
-      `${JB}/b/${CFG.binId}`,
-      new Blob([JSON.stringify({ slots:upd, avail:S.avail, cancelLog:S.cancelLog })],
-               { type:'application/json' }));
+    // sendBeacon doesn't support custom headers, skip for private bins
+    // The slot will auto-expire after 2 minutes anyway
   } catch (_) {}
 });
 
