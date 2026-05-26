@@ -216,11 +216,11 @@ function minifyForStorage(slots) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// JSONBIN DATABASE
+// SUPABASE DATABASE — free, reliable, no size limits
 // ═══════════════════════════════════════════════════════════════════════════════
-const JB_KEY   = '$2a$10$BTD2e43NYyQThu0hJfJUbOj2X3Xz/n50FarlnMOAdE4c9CnrXCHuW';
-const JB_BIN   = '69c7c7b0ed015c742bc4ac17';
-const JB_URL   = 'https://api.jsonbin.io/v3';
+const SB_URL = 'https://dzyppkoatkrbfnkrzurr.supabase.co';
+const SB_KEY = 'sb_publishable_JvYQhd-qFxtIhwkGPfjbtA_HRybVFCR';
+const SB_HDR = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
 
 function saveCache(data) {
   try{ localStorage.setItem(CACHE_KEY,JSON.stringify(data)); }catch(_){}
@@ -231,38 +231,31 @@ function loadCache() {
 
 async function apiRead() {
   const r = await Promise.race([
-    fetch(`${JB_URL}/b/${JB_BIN}/latest`, {
-      headers: {
-        'X-Master-Key': JB_KEY,
-        'X-Access-Key': JB_KEY,
-        'X-Bin-Meta': 'false'
-      }
+    fetch(`${SB_URL}/rest/v1/scheduler?id=eq.1&select=content`, {
+      headers: SB_HDR
     }),
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Read timeout')),10000))
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Read timeout')),15000))
   ]);
   if(!r.ok) throw new Error('Read '+r.status);
-  const data = await r.json();
+  const rows = await r.json();
+  if(!rows||!rows.length) throw new Error('No data');
+  const data = rows[0].content || {slots:[],avail:{},cancelLog:[]};
   saveCache(data);
   return data;
 }
 
 async function apiWrite(data) {
-  // Only store booked slots — keeps bin tiny (5-15kb) forever
   const payload = {
     slots: minifyForStorage(data.slots||[]),
     avail: data.avail||{},
-    cancelLog: (data.cancelLog||[]).slice(-50),
+    cancelLog: (data.cancelLog||[]).slice(-100),
   };
-  const r = await fetch(`${JB_URL}/b/${JB_BIN}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': JB_KEY,
-      'X-Access-Key': JB_KEY,
-    },
-    body: JSON.stringify(payload),
+  const r = await fetch(`${SB_URL}/rest/v1/scheduler?id=eq.1`, {
+    method: 'PATCH',
+    headers: SB_HDR,
+    body: JSON.stringify({ content: payload }),
   });
-  if(!r.ok){
+  if(!r.ok) {
     const err = await r.text().catch(()=>'');
     throw new Error('Write '+r.status+': '+err);
   }
@@ -274,7 +267,7 @@ async function apiReadWithRetry(n=3) {
   let err;
   for(let i=0;i<n;i++){
     try{ return await apiRead(); }
-    catch(e){ err=e; if(i<n-1) await sleep(2000); }
+    catch(e){ err=e; if(i<n-1) await sleep(1500); }
   }
   const cached=loadCache();
   if(cached) return cached;
@@ -634,14 +627,10 @@ async function forceCompact() {
       avail: fresh.avail||{},
       cancelLog: (fresh.cancelLog||[]).slice(-50),
     };
-    const r = await fetch(`${JB_URL}/b/${JB_BIN}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JB_KEY,
-        'X-Access-Key': JB_KEY,
-      },
-      body: JSON.stringify(payload),
+    const r = await fetch(`${SB_URL}/rest/v1/scheduler?id=eq.1`, {
+      method: 'PATCH',
+      headers: SB_HDR,
+      body: JSON.stringify({ content: payload }),
     });
     if (!r.ok) {
       const err = await r.text().catch(()=>'');
