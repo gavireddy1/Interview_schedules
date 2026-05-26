@@ -308,7 +308,7 @@ function loadCache() {
 async function apiRead() {
   // 8 second timeout — prevents hanging forever
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), 12000); // 12s for reads
   try {
     const r = await fetch(`${JB}/b/${CFG.binId}/latest`, {
       signal: controller.signal,
@@ -369,7 +369,7 @@ async function apiWrite(data) {
   };
 
   const wCtrl = new AbortController();
-  const wTimer = setTimeout(() => wCtrl.abort(), 10000);
+  const wTimer = setTimeout(() => wCtrl.abort(), 25000); // 25s for writes
   let r;
   try {
     r = await fetch(`${JB}/b/${CFG.binId}`, {
@@ -668,7 +668,11 @@ async function submitForm() {
     if (e.message === 'TAKEN' || e.message === 'FOLLOW_TAKEN')
       toast('Sorry, one or more slots in your selected duration are already booked. Please pick a different time.');
     else if (e.message === 'BUSY') toast('Please wait a moment and try again.');
-    else toast('❌ ' + (e.message || 'Save failed. Try again.'));
+    else if (e.message && e.message.includes('abort')) {
+      toast('Connection timed out. Please check internet and try again.');
+    } else {
+      toast('❌ ' + (e.message || 'Save failed. Try again.'));
+    }
   }
 }
 
