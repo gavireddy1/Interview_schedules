@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Interview Scheduler</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -219,9 +220,10 @@ function minifyForStorage(slots) {
 // SUPABASE DATABASE — free, reliable, no size limits
 // ═══════════════════════════════════════════════════════════════════════════════
 const SB_URL = 'https://dzyppkoatkrbfnkrzurr.supabase.co';
-const SB_PUB = 'sb_publishable_JvYQhd-qFxtIhwkGPfjbtA_HRybVFCR';
-const SB_SEC = 'sb_secret_qOIaxGP4U916HRfKENsuOw_cXD7N0B-';
-const SB_HDR = { 'apikey': SB_SEC, 'Authorization': 'Bearer '+SB_SEC, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+const SB_KEY = 'sb_publishable_JvYQhd-qFxtIhwkGPfjbtA_HRybVFCR';
+
+// Initialize Supabase client using official SDK
+const _sb = supabase.createClient(SB_URL, SB_KEY);
 
 function saveCache(data) {
   try{ localStorage.setItem(CACHE_KEY,JSON.stringify(data)); }catch(_){}
@@ -231,35 +233,28 @@ function loadCache() {
 }
 
 async function apiRead() {
-  const r = await Promise.race([
-    fetch(`${SB_URL}/rest/v1/scheduler?id=eq.1&select=content`, {
-      headers: SB_HDR
-    }),
-    new Promise((_,rej)=>setTimeout(()=>rej(new Error('Read timeout')),15000))
-  ]);
-  if(!r.ok) throw new Error('Read '+r.status);
-  const rows = await r.json();
-  if(!rows||!rows.length) throw new Error('No data in Supabase table');
-  const data = rows[0].content || {slots:[],avail:{},cancelLog:[]};
-  saveCache(data);
-  return data;
+  const { data, error } = await _sb
+    .from('scheduler')
+    .select('content')
+    .eq('id', 1)
+    .single();
+  if(error) throw new Error('Read: ' + error.message);
+  const result = data.content || {slots:[],avail:{},cancelLog:[]};
+  saveCache(result);
+  return result;
 }
 
-async function apiWrite(data) {
+async function apiWrite(d) {
   const payload = {
-    slots: minifyForStorage(data.slots||[]),
-    avail: data.avail||{},
-    cancelLog: (data.cancelLog||[]).slice(-100),
+    slots: minifyForStorage(d.slots||[]),
+    avail: d.avail||{},
+    cancelLog: (d.cancelLog||[]).slice(-100),
   };
-  const r = await fetch(`${SB_URL}/rest/v1/scheduler?id=eq.1`, {
-    method: 'PATCH',
-    headers: SB_HDR,
-    body: JSON.stringify({ content: payload }),
-  });
-  if(!r.ok) {
-    const err = await r.text().catch(()=>'');
-    throw new Error('Write '+r.status+': '+err);
-  }
+  const { error } = await _sb
+    .from('scheduler')
+    .update({ content: payload })
+    .eq('id', 1);
+  if(error) throw new Error('Write: ' + error.message);
   saveCache(payload);
   return payload;
 }
@@ -627,15 +622,8 @@ async function forceCompact() {
       avail: fresh.avail||{},
       cancelLog: (fresh.cancelLog||[]).slice(-50),
     };
-    const r = await fetch(`${SB_URL}/rest/v1/scheduler?id=eq.1`, {
-      method: 'PATCH',
-      headers: SB_HDR,
-      body: JSON.stringify({ content: payload }),
-    });
-    if (!r.ok) {
-      const err = await r.text().catch(()=>'');
-      toast('❌ Clean failed: ' + err); return;
-    }
+    const { error: wErr } = await _sb.from('scheduler').update({ content: payload }).eq('id', 1);
+    if (wErr) { toast('❌ Clean failed: ' + wErr.message); return; }
     saveCache(payload);
     S.slots = processSlots(payload.slots);
     S.avail = payload.avail;
