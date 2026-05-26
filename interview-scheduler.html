@@ -339,51 +339,34 @@ async function apiReadWithRetry(attempts = 3) {
   throw lastErr;
 }
 
-// Compact a slot for storage — strips null/empty fields from available slots
-// Booked slots keep all fields. Available slots only need id,ivId,date,time,status
+// Strip a slot to minimal storage format
+function minifySlot(s) {
+  if (s.status === 'booked') {
+    // Keep all non-null fields for booked slots
+    const out = {};
+    for (const [k,v] of Object.entries(s)) {
+      if (v !== null && v !== undefined && v !== '') out[k] = v;
+    }
+    return out;
+  }
+  // Available/filling/dsm: only 5 fields needed
+  return { id:s.id, ivId:s.ivId, date:s.date, time:s.time, status:'available' };
+}
+
 function compactSlots(slots) {
   const todayStr = localDate(0);
   return slots
-    // Step 1: remove past available/filling slots — not needed
-    .filter(s => {
-      if (s.date >= todayStr) return true;
-      return s.status === 'booked'; // only keep past bookings
-    })
-    // Step 2: strip null fields from available slots to save space
-    .map(s => {
-      if (s.status !== 'booked') {
-        return { id:s.id, ivId:s.ivId, date:s.date, time:s.time, status:s.status };
-      }
-      // Booked: keep all fields but remove nulls
-      const out = {};
-      for (const [k,v] of Object.entries(s)) {
-        if (v !== null && v !== '' && v !== undefined) out[k] = v;
-      }
-      return out;
-    });
+    .filter(s => s.date >= todayStr || s.status === 'booked')
+    .map(s => minifySlot(s));
 }
 
 async function apiWrite(data) {
-  const compacted = { ...data, slots: compactSlots(data.slots || []) };
-  const body = JSON.stringify(compacted);
-  const sizeKb = Math.round(body.length / 1024);
-
-  // If still over 80kb, only keep booked slots + today onwards
-  let finalData = compacted;
-  if (sizeKb > 80) {
-    const todayStr = localDate(0);
-    finalData = {
-      ...data,
-      slots: (data.slots || [])
-        .filter(s => s.status === 'booked' || s.date >= todayStr)
-        .map(s => {
-          if (s.status !== 'booked') return { id:s.id, ivId:s.ivId, date:s.date, time:s.time, status:s.status };
-          const out = {};
-          for (const [k,v] of Object.entries(s)) { if (v !== null && v !== '') out[k] = v; }
-          return out;
-        })
-    };
-  }
+  // Always compact before writing
+  const finalData = {
+    slots: compactSlots(data.slots || []),
+    avail: data.avail || {},
+    cancelLog: (data.cancelLog || []).slice(-30), // keep last 30 cancel records only
+  };
 
   const wCtrl = new AbortController();
   const wTimer = setTimeout(() => wCtrl.abort(), 10000);
@@ -456,20 +439,31 @@ const S = {
 let _pollTimer = null;
 
 async function boot() {
-  // Step 1: Show cache INSTANTLY — user sees app immediately
+  // ALWAYS show landing page immediately — never stay on loading screen
+
+  // Load from cache first (instant)
   const cached = loadCache();
   if (cached) {
     S.slots    = processSlots(cached.slots || []);
     S.avail    = cached.avail || {};
     S.cancelLog= cached.cancelLog || [];
-    S.activeDay = localDate(0);
-    S.view = 'landing';
-    render(); // show app right away from cache
   } else {
-    render(); // show loading screen only if no cache
+    // No cache — show empty slots so app is usable immediately
+    S.slots    = processSlots([]);
+    S.avail    = {};
+    S.cancelLog= [];
   }
+  S.activeDay = localDate(0);
+  S.view = 'landing';
+  render(); // App is visible NOW — no waiting
 
-  // Step 2: Sync from network in background (doesn't block UI)
+  // Sync from network silently in background
+  syncFromNetwork();
+  startPoll();
+}
+
+// Separate background sync — never blocks the UI
+async function syncFromNetwork() {
   try {
     const data = await apiReadWithRetry(3);
     const rawSlots = expireFillingSlots(data.slots || []);
@@ -477,41 +471,31 @@ async function boot() {
     S.slots    = applyDSM(withDates);
     S.avail    = data.avail || {};
     S.cancelLog= data.cancelLog || [];
-    S.activeDay = localDate(0);
-    S.view = 'landing';
-    render(); // refresh with fresh data
-
-    // Write new dates to JSONBin if needed (background, non-blocking)
+    if (S.view === 'landing' || S.view === 'candidate' || S.view === 'iv-panel') {
+      render(); // silently refresh display
+    }
+    // Write new dates to JSONBin if needed
     if (added && !_writing) {
       _writing = true;
-      apiRead().then(fresh => {
+      try {
+        const fresh = await apiRead();
         const freshRaw = expireFillingSlots(fresh.slots || []);
         const { slots: freshWithDates } = addMissingDates(freshRaw);
-        return apiWrite({
+        const written = await apiWrite({
           slots: freshWithDates,
           avail: fresh.avail || S.avail,
           cancelLog: fresh.cancelLog || S.cancelLog,
         });
-      }).then(written => {
         if (written) {
           S.slots = applyDSM(expireFillingSlots(written.slots || []));
           render();
         }
-      }).catch(() => {}).finally(() => { _writing = false; });
+      } catch(_) {}
+      finally { _writing = false; }
     }
   } catch (_) {
-    // Network failed — already showing cache, just stay on it
-    if (!cached) {
-      S.slots = processSlots([]);
-      S.avail = {}; S.cancelLog = [];
-      S.activeDay = localDate(0);
-      S.view = 'landing';
-      render();
-      toast('No connection. Showing offline mode. Tap Refresh to sync.', 5000);
-    }
+    // Network failed — cache is already shown, do nothing
   }
-
-  startPoll();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -684,7 +668,7 @@ async function submitForm() {
     if (e.message === 'TAKEN' || e.message === 'FOLLOW_TAKEN')
       toast('Sorry, one or more slots in your selected duration are already booked. Please pick a different time.');
     else if (e.message === 'BUSY') toast('Please wait a moment and try again.');
-    else toast('Save failed. Please try again.');
+    else toast('❌ ' + (e.message || 'Save failed. Try again.'));
   }
 }
 
