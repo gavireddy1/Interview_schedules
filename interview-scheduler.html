@@ -219,8 +219,9 @@ function minifyForStorage(slots) {
 // SUPABASE DATABASE — free, reliable, no size limits
 // ═══════════════════════════════════════════════════════════════════════════════
 const SB_URL = 'https://dzyppkoatkrbfnkrzurr.supabase.co';
-const SB_KEY = 'sb_publishable_JvYQhd-qFxtIhwkGPfjbtA_HRybVFCR';
-const SB_HDR = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+const SB_PUB = 'sb_publishable_JvYQhd-qFxtIhwkGPfjbtA_HRybVFCR';
+const SB_SEC = 'sb_secret_qOIaxGP4U916HRfKENsuOw_cXD7N0B-';
+const SB_HDR = { 'apikey': SB_SEC, 'Authorization': 'Bearer '+SB_SEC, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
 
 function saveCache(data) {
   try{ localStorage.setItem(CACHE_KEY,JSON.stringify(data)); }catch(_){}
