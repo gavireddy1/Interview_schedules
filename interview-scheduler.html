@@ -167,15 +167,22 @@ function blankSlot(ivId,date,time) {
 
 function addMissingDates(slots) {
   const req = Array.from({length:DAYS_AHEAD},(_,i)=>localDate(i));
-  const ex  = new Set(slots.map(s=>s.date));
+  // Check each ivId+date+time combination — not just date
+  // This ensures ALL slots are visible even when a date has some bookings
+  const existing = new Set(slots.map(s=>s.ivId+'|'+s.date+'|'+s.time));
   let added = false;
   for(const date of req) {
-    if(!ex.has(date)) {
-      for(const iv of IVS) for(const time of TIMES) slots=[...slots,blankSlot(iv.id,date,time)];
-      added=true;
+    for(const iv of IVS) {
+      for(const time of TIMES) {
+        const key = iv.id+'|'+date+'|'+time;
+        if(!existing.has(key)) {
+          slots = [...slots, blankSlot(iv.id, date, time)];
+          added = true;
+        }
+      }
     }
   }
-  return {slots,added};
+  return {slots, added};
 }
 
 function expireFilling(slots) {
