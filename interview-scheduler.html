@@ -342,7 +342,14 @@ async function syncInBackground() {
     const data=await apiReadWithRetry(2);
     const raw=expireFilling(data.slots||[]);
     const{slots:wd,added}=addMissingDates(raw);
-    S.slots=applyDSM(wd);
+    // Merge booked slots into existing slots to preserve available slot IDs
+    const bookedSync=(wd||[]).filter(s=>s.status==='booked');
+    const mergedSync=S.slots.length>0?S.slots.map(s=>{
+      const b=bookedSync.find(b=>b.ivId===s.ivId&&b.date===s.date&&b.time===s.time);
+      return b||s;
+    }):wd;
+    const{slots:syncWithDates}=addMissingDates(mergedSync);
+    S.slots=applyDSM(expireFilling(syncWithDates));
     S.avail=data.avail||{};
     S.cancelLog=data.cancelLog||[];
     if(['landing','candidate','iv-panel'].includes(S.view)) render();
@@ -369,7 +376,20 @@ function startPoll(){
     if(_writing) return;
     try{
       const data=await apiRead();
-      S.slots=processSlots(data.slots||[]);
+      // Merge booked slots into existing available slots (preserves slot IDs)
+      const bookedFromPoll=(data.slots||[]).filter(s=>s.status==='booked');
+      let polledSlots=S.slots.map(s=>{
+        const b=bookedFromPoll.find(b=>b.ivId===s.ivId&&b.date===s.date&&b.time===s.time);
+        // If slot was booked by someone, update it; otherwise keep as-is (available)
+        if(b) return b;
+        // If slot was booked before but no longer in result, it was cancelled - reset
+        if(s.status==='booked'&&!bookedFromPoll.find(b=>b.ivId===s.ivId&&b.date===s.date&&b.time===s.time))
+          return{...s,status:'available',name:null,email:null,phone:null,position:null,
+            experience:null,duration:null,notes:null,linkedTo:null,filledAt:null,fillingAt:null,sid:null};
+        return s;
+      });
+      const{slots:polledWithDates}=addMissingDates(polledSlots);
+      S.slots=applyDSM(expireFilling(polledWithDates));
       S.avail=data.avail||{};
       S.cancelLog=data.cancelLog||[];
       render();
@@ -450,7 +470,16 @@ async function submitForm() {
         cancelLog:fresh.cancelLog||[],
       };
     });
-    S.slots=processSlots(result.slots);
+    // Merge booked slots back, preserve available slot IDs, ensure all 7 days visible
+    const bookedFromResult=(result.slots||[]).filter(s=>s.status==='booked');
+    // Update existing slots with booking data
+    let merged=S.slots.map(s=>{
+      const b=bookedFromResult.find(b=>b.ivId===s.ivId&&b.date===s.date&&b.time===s.time);
+      return b||s;
+    });
+    // Make sure all 7 days are present
+    const {slots:withAllDates}=addMissingDates(merged);
+    S.slots=applyDSM(expireFilling(withAllDates));
     S.avail=result.avail; S.cancelLog=result.cancelLog;
     S.successSlot=S.slots.find(s=>s.ivId===localSlot.ivId&&s.date===localSlot.date&&s.time===localSlot.time)
       ||{...localSlot,...fd,status:'booked'};
@@ -535,7 +564,20 @@ async function confirmCancel() {
         cancelLog:[...(fresh.cancelLog||[]),log],
       };
     });
-    S.slots=processSlots(result.slots);
+    // Merge back — preserve available slot IDs
+    const bookedAfterCancel = result.slots.filter(s=>s.status==='booked');
+    S.slots = S.slots.map(s=>{
+      const b = bookedAfterCancel.find(b=>b.id===s.id||
+        (b.ivId===s.ivId&&b.date===s.date&&b.time===s.time));
+      if(b) return b;
+      // Slot was cancelled — reset to available
+      if(s.status==='booked'&&!bookedAfterCancel.find(b=>b.id===s.id))
+        return{...s,status:'available',name:null,email:null,phone:null,
+          position:null,experience:null,duration:null,notes:null,
+          linkedTo:null,filledAt:null,fillingAt:null,sid:null};
+      return s;
+    });
+    S.slots = applyDSM(expireFilling(S.slots));
     S.cancelLog=result.cancelLog;
     closeModal();
     toast('✅ Cancelled. Slot is free for others to book.');
