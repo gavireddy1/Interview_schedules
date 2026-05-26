@@ -306,25 +306,22 @@ function loadCache() {
 // JSONBIN API
 // ═══════════════════════════════════════════════════════════════════════════════
 async function apiRead() {
-  // 8 second timeout — prevents hanging forever
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000); // 12s for reads
-  try {
-    const r = await fetch(`${JB}/b/${CFG.binId}/latest`, {
-      signal: controller.signal,
-      headers: {
-        'X-Master-Key': CFG.key,
-        'X-Access-Key': CFG.key,
-        'X-Bin-Meta': 'false'
-      },
-    });
-    if (!r.ok) throw new Error(`Read ${r.status}`);
-    const data = await r.json();
-    saveCache(data);
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
+  // Use Promise.race for timeout — avoids AbortController issues
+  const fetchPromise = fetch(`${JB}/b/${CFG.binId}/latest`, {
+    headers: {
+      'X-Master-Key': CFG.key,
+      'X-Access-Key': CFG.key,
+      'X-Bin-Meta': 'false'
+    },
+  });
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Read timeout')), 12000)
+  );
+  const r = await Promise.race([fetchPromise, timeoutPromise]);
+  if (!r.ok) throw new Error(`Read ${r.status}`);
+  const data = await r.json();
+  saveCache(data);
+  return data;
 }
 
 async function apiReadWithRetry(attempts = 3) {
@@ -368,21 +365,16 @@ async function apiWrite(data) {
     cancelLog: (data.cancelLog || []).slice(-30), // keep last 30 cancel records only
   };
 
-  const wCtrl = new AbortController();
-  const wTimer = setTimeout(() => wCtrl.abort(), 25000); // 25s for writes
-  let r;
-  try {
-    r = await fetch(`${JB}/b/${CFG.binId}`, {
-      method: 'PUT',
-      signal: wCtrl.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': CFG.key,
-        'X-Access-Key': CFG.key,
-      },
-      body: JSON.stringify(finalData),
-    });
-  } finally { clearTimeout(wTimer); }
+  // No timeout on writes — must always complete to avoid data loss
+  const r = await fetch(`${JB}/b/${CFG.binId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': CFG.key,
+      'X-Access-Key': CFG.key,
+    },
+    body: JSON.stringify(finalData),
+  });
   if (!r.ok) {
     const errText = await r.text().catch(()=>'');
     throw new Error(`Write ${r.status}: ${errText}`);
@@ -944,7 +936,7 @@ async function forceCompact() {
         'X-Access-Key': CFG.key,
       },
       body: JSON.stringify(payload),
-    });
+    }); // no timeout — must complete
 
     if (!r.ok) {
       const err = await r.text().catch(()=>'');
