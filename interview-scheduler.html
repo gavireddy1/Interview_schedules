@@ -196,24 +196,22 @@ function applyDSM(slots) {
 }
 
 function processSlots(raw) {
-  let slots=expireFilling(raw||[]);
-  const{slots:wd}=addMissingDates(slots);
+  // raw contains only booked slots from JSONBin
+  // Generate fresh available slots for all required dates
+  let slots = expireFilling(raw||[]);
+  const{slots:wd} = addMissingDates(slots); // adds available slots for missing dates
   return applyDSM(wd);
 }
 
-// Strip available slots to minimal fields to save storage space
+// Only store BOOKED slots in JSONBin — available slots are generated locally
+// This keeps the bin tiny (5-15kb) forever regardless of usage
 function minifyForStorage(slots) {
-  const today=localDate(0);
   return slots
-    .filter(s=>s.date>=today||s.status==='booked')
-    .map(s=>{
-      if(s.status==='booked'||s.status==='filling'){
-        // Keep all non-null fields
-        const o={};
-        for(const[k,v] of Object.entries(s)) if(v!==null&&v!==undefined&&v!=='') o[k]=v;
-        return o;
-      }
-      return{id:s.id,ivId:s.ivId,date:s.date,time:s.time,status:'available'};
+    .filter(s => s.status === 'booked') // only booked — skip all available/filling/dsm
+    .map(s => {
+      const o = {};
+      for(const[k,v] of Object.entries(s)) if(v!==null&&v!==undefined&&v!=='') o[k]=v;
+      return o;
     });
 }
 
@@ -249,44 +247,27 @@ async function apiRead() {
 }
 
 async function apiWrite(data) {
-  const today = localDate(0);
-
-  // Level 1: normal compaction
-  const try1 = {
+  // Only store booked slots — keeps bin tiny (5-15kb) forever
+  const payload = {
     slots: minifyForStorage(data.slots||[]),
     avail: data.avail||{},
-    cancelLog: (data.cancelLog||[]).slice(-30),
+    cancelLog: (data.cancelLog||[]).slice(-50),
   };
-
-  // Level 2: aggressive — only today+future slots and booked
-  const try2 = {
-    slots: (data.slots||[])
-      .filter(s => s.date >= today || s.status === 'booked')
-      .map(s => s.status==='booked'
-        ? (o=>{const r={};for(const[k,v] of Object.entries(s)) if(v!=null&&v!=='') r[k]=v; return r;})(s)
-        : {id:s.id,ivId:s.ivId,date:s.date,time:s.time,status:'available'}),
-    avail: data.avail||{},
-    cancelLog: (data.cancelLog||[]).slice(-10),
-  };
-
-  // Try with level 1 first, fall back to level 2 if too large
-  for(const payload of [try1, try2]){
-    const r = await fetch(`${JB_URL}/b/${JB_BIN}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JB_KEY,
-        'X-Access-Key': JB_KEY,
-      },
-      body: JSON.stringify(payload),
-    });
-    if(r.ok){ saveCache(payload); return payload; }
+  const r = await fetch(`${JB_URL}/b/${JB_BIN}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JB_KEY,
+      'X-Access-Key': JB_KEY,
+    },
+    body: JSON.stringify(payload),
+  });
+  if(!r.ok){
     const err = await r.text().catch(()=>'');
-    // If not a size error, throw immediately
-    if(!err.includes('100kb') && !err.includes('Free users')) throw new Error('Write '+r.status+': '+err);
-    // Otherwise try with more aggressive compaction
+    throw new Error('Write '+r.status+': '+err);
   }
-  throw new Error('Data too large even after compaction. Please contact admin.');
+  saveCache(payload);
+  return payload;
 }
 
 async function apiReadWithRetry(n=3) {
