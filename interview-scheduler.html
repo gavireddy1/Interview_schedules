@@ -306,26 +306,34 @@ function loadCache() {
 // JSONBIN API
 // ═══════════════════════════════════════════════════════════════════════════════
 async function apiRead() {
-  const r = await fetch(`${JB}/b/${CFG.binId}/latest`, {
-    headers: {
-      'X-Master-Key': CFG.key,
-      'X-Access-Key': CFG.key,
-      'X-Bin-Meta': 'false'
-    },
-  });
-  if (!r.ok) throw new Error(`Read ${r.status}`);
-  const data = await r.json();
-  saveCache(data);
-  return data;
+  // 8 second timeout — prevents hanging forever
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(`${JB}/b/${CFG.binId}/latest`, {
+      signal: controller.signal,
+      headers: {
+        'X-Master-Key': CFG.key,
+        'X-Access-Key': CFG.key,
+        'X-Bin-Meta': 'false'
+      },
+    });
+    if (!r.ok) throw new Error(`Read ${r.status}`);
+    const data = await r.json();
+    saveCache(data);
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-async function apiReadWithRetry(attempts = 4) {
+async function apiReadWithRetry(attempts = 3) {
   let lastErr;
   for (let i = 0; i < attempts; i++) {
     try { return await apiRead(); }
     catch (e) {
       lastErr = e;
-      if (i < attempts - 1) await sleep(Math.min(800 * Math.pow(2, i), 5000));
+      if (i < attempts - 1) await sleep(1500); // short fixed wait, not exponential
     }
   }
   throw lastErr;
@@ -377,15 +385,21 @@ async function apiWrite(data) {
     };
   }
 
-  const r = await fetch(`${JB}/b/${CFG.binId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': CFG.key,
-      'X-Access-Key': CFG.key,
-    },
-    body: JSON.stringify(finalData),
-  });
+  const wCtrl = new AbortController();
+  const wTimer = setTimeout(() => wCtrl.abort(), 10000);
+  let r;
+  try {
+    r = await fetch(`${JB}/b/${CFG.binId}`, {
+      method: 'PUT',
+      signal: wCtrl.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': CFG.key,
+        'X-Access-Key': CFG.key,
+      },
+      body: JSON.stringify(finalData),
+    });
+  } finally { clearTimeout(wTimer); }
   if (!r.ok) {
     const errText = await r.text().catch(()=>'');
     throw new Error(`Write ${r.status}: ${errText}`);
@@ -442,56 +456,61 @@ const S = {
 let _pollTimer = null;
 
 async function boot() {
-  render(); // show loading screen
-  let data = null;
-  try {
-    data = await apiReadWithRetry(4);
-  } catch (_) {
-    data = loadCache(); // fall back to cache silently
+  // Step 1: Show cache INSTANTLY — user sees app immediately
+  const cached = loadCache();
+  if (cached) {
+    S.slots    = processSlots(cached.slots || []);
+    S.avail    = cached.avail || {};
+    S.cancelLog= cached.cancelLog || [];
+    S.activeDay = localDate(0);
+    S.view = 'landing';
+    render(); // show app right away from cache
+  } else {
+    render(); // show loading screen only if no cache
   }
-  if (data) {
+
+  // Step 2: Sync from network in background (doesn't block UI)
+  try {
+    const data = await apiReadWithRetry(3);
     const rawSlots = expireFillingSlots(data.slots || []);
     const { slots: withDates, added } = addMissingDates(rawSlots);
-    const processed = applyDSM(withDates);
-    S.slots    = processed;
+    S.slots    = applyDSM(withDates);
     S.avail    = data.avail || {};
     S.cancelLog= data.cancelLog || [];
+    S.activeDay = localDate(0);
+    S.view = 'landing';
+    render(); // refresh with fresh data
 
-    // If new dates were added locally, save them to JSONBin immediately
-    // so Register works for those new dates (slots need real IDs in JSONBin)
+    // Write new dates to JSONBin if needed (background, non-blocking)
     if (added && !_writing) {
       _writing = true;
-      try {
-        // Read absolute latest before writing to avoid overwriting bookings
-        const fresh = await apiRead();
+      apiRead().then(fresh => {
         const freshRaw = expireFillingSlots(fresh.slots || []);
         const { slots: freshWithDates } = addMissingDates(freshRaw);
-        const toWrite = {
+        return apiWrite({
           slots: freshWithDates,
           avail: fresh.avail || S.avail,
           cancelLog: fresh.cancelLog || S.cancelLog,
-        };
-        await apiWrite(toWrite);
-        // Update local state with what we just wrote
-        S.slots     = applyDSM(freshWithDates);
-        S.avail     = toWrite.avail;
-        S.cancelLog = toWrite.cancelLog;
-      } catch (_) {
-        // Write failed — local slots still work for display,
-        // but Register will fail for new dates until next successful write
-      } finally {
-        _writing = false;
-      }
+        });
+      }).then(written => {
+        if (written) {
+          S.slots = applyDSM(expireFillingSlots(written.slots || []));
+          render();
+        }
+      }).catch(() => {}).finally(() => { _writing = false; });
     }
-  } else {
-    // Truly offline and no cache — show empty local schedule, don't write
-    S.slots = processSlots([]);
-    S.avail = {}; S.cancelLog = [];
-    toast('No connection. Tap Refresh when online.', 6000);
+  } catch (_) {
+    // Network failed — already showing cache, just stay on it
+    if (!cached) {
+      S.slots = processSlots([]);
+      S.avail = {}; S.cancelLog = [];
+      S.activeDay = localDate(0);
+      S.view = 'landing';
+      render();
+      toast('No connection. Showing offline mode. Tap Refresh to sync.', 5000);
+    }
   }
-  S.activeDay = localDate(0);
-  S.view = 'landing';
-  render();
+
   startPoll();
 }
 
@@ -543,6 +562,30 @@ function cancelForm() {
   render();
 }
 
+// How many 30-min slots a duration occupies
+function durSlots(duration) {
+  if (!duration) return 1;
+  if (duration === '1 hr')   return 2;
+  if (duration === '1.5 hrs') return 3;
+  if (duration === '2 hrs')  return 4;
+  return 1; // 30 min default
+}
+
+// Get the next N time slots after a given time on the same date for same interviewer
+function getFollowSlots(slots, ivId, date, startTime, count) {
+  const allTimes = TIMES; // 9:00, 9:30, 10:00 ... 19:30
+  const startIdx = allTimes.indexOf(startTime);
+  if (startIdx === -1) return [];
+  const result = [];
+  for (let i = 1; i < count; i++) {
+    const t = allTimes[startIdx + i];
+    if (!t) break;
+    const s = slots.find(sl => sl.ivId === ivId && sl.date === date && sl.time === t);
+    if (s) result.push(s);
+  }
+  return result;
+}
+
 // Step 2 (was 3): Candidate submits form — does full atomic check + booking here
 async function submitForm() {
   const name  = document.getElementById('f-name')?.value?.trim();
@@ -589,12 +632,36 @@ async function submitForm() {
       if (!slot)                    throw new Error('NOTFOUND');
       if (slot.status === 'booked') throw new Error('TAKEN');  // someone booked it while form was open
 
-      // Book the slot
+      // Calculate how many 30-min slots to block based on duration
+      const numSlots = durSlots(formData.duration);
+      const followSlots = getFollowSlots(slots, slot.ivId, slot.date, slot.time, numSlots);
+
+      // Check all follow-up slots are available
+      for (const fs of followSlots) {
+        if (fs.status === 'booked') throw new Error('FOLLOW_TAKEN');
+      }
+
+      const bookedAt = new Date().toISOString();
+      const bookingId = slot.id; // primary slot id links follow-up slots
+
       return {
-        slots: slots.map(s => s.id === slot.id
-          ? { ...s, status:'booked', ...formData,
-              filledAt: new Date().toISOString(), fillingAt:null, sid:null }
-          : s),
+        slots: slots.map(s => {
+          // Primary slot — full booking data
+          if (s.id === slot.id) {
+            return { ...s, status:'booked', ...formData,
+              filledAt: bookedAt, fillingAt:null, sid:null };
+          }
+          // Follow-up slots — linked to primary booking
+          if (followSlots.find(fs => fs.id === s.id)) {
+            return { ...s, status:'booked',
+              name: formData.name, email: formData.email,
+              duration: formData.duration,
+              position: formData.position,
+              linkedTo: bookingId,  // marks as a follow-up slot
+              filledAt: bookedAt, fillingAt:null, sid:null };
+          }
+          return s;
+        }),
         avail: fresh.avail || {},
         cancelLog: fresh.cancelLog || [],
       };
@@ -614,7 +681,8 @@ async function submitForm() {
     render();
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Confirm Registration →'; }
-    if (e.message === 'TAKEN')    toast('Sorry, this slot was just booked by someone else. Please go back and pick another slot.');
+    if (e.message === 'TAKEN' || e.message === 'FOLLOW_TAKEN')
+      toast('Sorry, one or more slots in your selected duration are already booked. Please pick a different time.');
     else if (e.message === 'BUSY') toast('Please wait a moment and try again.');
     else toast('Save failed. Please try again.');
   }
@@ -696,12 +764,16 @@ async function confirmCancel() {
         duration: slot.duration || '',
         cancelledAt: new Date().toISOString(), cancelledBy: adminName,
       };
+      // Also free any follow-up slots linked to this booking
       return {
-        slots: (fresh.slots || []).map(s => s.id === slotId
-          ? { ...s, status:'available', name:null, email:null, phone:null,
+        slots: (fresh.slots || []).map(s => {
+          if (s.id === slotId || s.linkedTo === slotId) {
+            return { ...s, status:'available', name:null, email:null, phone:null,
               position:null, experience:null, duration:null, notes:null,
-              filledAt:null, fillingAt:null, sid:null }
-          : s),
+              linkedTo:null, filledAt:null, fillingAt:null, sid:null };
+          }
+          return s;
+        }),
         avail: fresh.avail || {},
         cancelLog: [...(fresh.cancelLog || []), logEntry],
       };
@@ -1110,7 +1182,7 @@ function render() {
     const myDates  = [...new Set(mySlots.map(s => s.date))].sort();
     const activeDate = S.activeDay && myDates.includes(S.activeDay) ? S.activeDay : myDates[0];
     const daySlots   = mySlots.filter(s => s.date === activeDate).sort((a,b)=>a.time.localeCompare(b.time));
-    const dayBooked  = daySlots.filter(s => s.status === 'booked');
+    const dayBooked  = daySlots.filter(s => s.status === 'booked' && !s.linkedTo); // only primary bookings
     const dayAvl     = getAvail(iv.id, activeDate);
     const totalBooked    = mySlots.filter(s=>s.status==='booked').length;
     const totalCancelled = S.cancelLog.filter(l=>l.ivId===iv.id).length;
@@ -1138,7 +1210,18 @@ function render() {
       const isF = slot.status === 'filling';
       const isD = slot.status === 'dsm';
       let cell = '';
-      if (isB) cell = `
+      if (isB && slot.linkedTo) {
+        // Follow-up slot — show as continuation bar
+        cell = `<div style="display:flex;align-items:center;gap:10px;width:100%">
+          <div style="width:4px;height:38px;border-radius:3px;background:${iv.color};
+            opacity:.4;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="mono" style="font-size:11px;color:#aaa">
+              ↳ ${esc(slot.name)} (continued)</div>
+            <div class="mono" style="font-size:10px;color:#bbb">Part of ${esc(slot.duration||'')} booking</div>
+          </div>
+        </div>`;
+      } else if (isB) cell = `
         <div style="display:flex;align-items:center;gap:10px;width:100%">
           <div style="width:4px;height:38px;border-radius:3px;background:${iv.color};flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
@@ -1347,6 +1430,8 @@ function render() {
           background:${isB?'#f4fbf7':isF?'#fffbf0':'#fff'}">
           ${isD ? `<span class="mono" style="font-size:11px;color:#aaa;
               background:#f0ece4;padding:3px 8px;border-radius:5px">DSM</span>`
+            : (isB && slot.linkedTo) ? `<span class="mono" style="font-size:11px;color:#aaa;
+              background:#f0f7f0;padding:3px 8px;border-radius:5px">⏳ ${esc(slot.name)}</span>`
             : isB ? `<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
               <div class="mono" style="font-size:10px;color:#aaa;margin-top:2px">
                 Duration: ${esc(slot.duration||'30 min')} (${fmtTime(slot.time)} – ${fmtEndTime(slot.time)})</div>
