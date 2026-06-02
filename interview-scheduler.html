@@ -692,6 +692,63 @@ async function forceCompact() {
   } catch(e) { toast('Error: ' + e.message); }
 }
 
+
+// Cancel booking — works for both candidate (email verified) and admin
+async function cancelMyBooking(slotId) {
+  const slot = S.slots.find(s => s.id === slotId);
+  if(!slot || slot.status !== 'booked') { toast('Booking not found.'); return; }
+
+  const email = prompt(`Enter the email used to register for ${fmtTime(slot.time)} on ${fmtDate(slot.date)}:`);
+  if(!email) return;
+
+  if(email.trim().toLowerCase() !== (slot.email||'').toLowerCase()) {
+    toast('❌ Email does not match. Cannot cancel.'); return;
+  }
+
+  if(!confirm(`Cancel interview at ${fmtTime(slot.time)} on ${dayName(slot.date)}, ${fmtDate(slot.date)}?`)) return;
+
+  toast('Cancelling…', 10000);
+  try {
+    const result = await atomicUpdate(fresh => {
+      const localS = S.slots.find(s=>s.id===slotId);
+      let s2 = (fresh.slots||[]).find(s=>s.id===slotId);
+      if(!s2&&localS) s2=(fresh.slots||[]).find(s=>
+        s.ivId===localS.ivId&&s.date===localS.date&&s.time===localS.time&&s.status==='booked');
+      if(!s2||s2.status!=='booked') throw new Error('NOTBOOKED');
+      if(s2.email.toLowerCase()!==email.trim().toLowerCase()) throw new Error('EMAILMISMATCH');
+      const log={id:uid(),slotId:s2.id,ivId:s2.ivId,date:s2.date,time:s2.time,
+        name:s2.name,email:s2.email,phone:s2.phone||'',position:s2.position||'',
+        duration:s2.duration||'',cancelledAt:new Date().toISOString(),cancelledBy:'Candidate'};
+      return {
+        slots:(fresh.slots||[]).map(s=>
+          s.id===s2.id||s.linkedTo===s2.id
+            ?{...s,status:'available',name:null,email:null,phone:null,position:null,
+                experience:null,duration:null,notes:null,linkedTo:null,
+                filledAt:null,fillingAt:null,sid:null}:s),
+        avail:fresh.avail||{},
+        cancelLog:[...(fresh.cancelLog||[]),log],
+      };
+    });
+    const bookedAfter=(result.slots||[]).filter(s=>s.status==='booked');
+    S.slots=S.slots.map(s=>{
+      const b=bookedAfter.find(b=>b.ivId===s.ivId&&b.date===s.date&&b.time===s.time);
+      if(b) return b;
+      if(s.status==='booked'&&!b)
+        return{...s,status:'available',name:null,email:null,phone:null,position:null,
+          experience:null,duration:null,notes:null,linkedTo:null,filledAt:null,fillingAt:null,sid:null};
+      return s;
+    });
+    S.slots=applyDSM(expireFilling(S.slots));
+    S.cancelLog=result.cancelLog;
+    toast('✅ Booking cancelled. Slot is now free.');
+    render();
+  } catch(e) {
+    if(e.message==='EMAILMISMATCH') toast('❌ Email does not match. Cannot cancel.');
+    else if(e.message==='NOTBOOKED') toast('Slot is no longer booked.');
+    else toast('Cancel failed. Please try again.');
+  }
+}
+
 function goLanding() { S.view='landing'; S.activeSlotId=null; render(); }
 function setDay(d)   { S.activeDay=d; render(); }
 
@@ -1030,9 +1087,15 @@ function render() {
         return`<td style="padding:8px 11px;border-left:1px solid #f0ece4;background:${isB?'#f4fbf7':isF?'#fffbf0':'#fff'}">
           ${isD?`<span class="mono" style="font-size:11px;color:#aaa;background:#f0ece4;padding:3px 8px;border-radius:5px">DSM</span>`
           :isB&&slot.linkedTo?`<span class="mono" style="font-size:11px;color:#aaa;background:#edf7f2;padding:3px 8px;border-radius:5px">↳ ${esc(slot.name)}</span>`
-          :isB?`<span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
+          :isB?`<div>
+            <span style="font-weight:600;font-size:12px;color:#1e6e44">${esc(slot.name)}</span>
             <div class="mono" style="font-size:10px;color:#aaa;margin-top:2px">Duration: ${esc(slot.duration||'30 min')}</div>
-            <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>`
+            <div class="mono" style="font-size:10px;color:#6ec89a;margin-top:1px">✓ Booked</div>
+            <button onclick="cancelMyBooking('${slot.id}')"
+              style="margin-top:5px;padding:3px 9px;border:1px solid #f5c0c0;border-radius:5px;
+              background:#fff5f5;color:#c0392b;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer">
+              ✕ Cancel my booking
+            </button></div>`
           :isF?`<span class="badge bg-a" style="font-size:9px">⏳ Registering…</span>`
           :na?`<span class="mono" style="font-size:11px;color:#ddd">Unavailable</span>`
           :`<button onclick="startRegister('${slot.id}')"
@@ -1170,6 +1233,13 @@ function render() {
       <div style="display:flex;gap:9px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost" onclick="S.view='candidate';S.successSlot=null;render()">← View Schedule</button>
         <button class="btn btn-dark" onclick="goLanding()">🏠 Home</button>
+      </div>
+      <div style="margin-top:12px;text-align:center">
+        <button onclick="if(S.successSlot)cancelMyBooking(S.successSlot.id)"
+          style="background:none;border:none;color:#c0392b;font-size:12px;
+          font-family:'DM Mono',monospace;cursor:pointer;text-decoration:underline">
+          Cancel this booking
+        </button>
       </div>
     </div>`;
   }
