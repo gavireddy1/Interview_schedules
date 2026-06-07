@@ -932,6 +932,17 @@ function startNotifChecker() {
 }
 
 
+// Auto-save admin emails as user types
+let _emailSaveTimer;
+function autoSaveAdminEmails(val) {
+  clearTimeout(_emailSaveTimer);
+  _emailSaveTimer = setTimeout(() => {
+    const cfg = getEmailConfig();
+    cfg.adminEmails = val.trim();
+    saveEmailConfig(cfg);
+  }, 800); // save 0.8s after user stops typing
+}
+
 function saveNotifSettings() {
   const cfg = {
     serviceId: document.getElementById('ejs-service')?.value?.trim()||'',
@@ -1258,7 +1269,8 @@ function render() {
             <span class="lbl">Admin Emails (comma separated)</span>
             <input id="ejs-admins" placeholder="admin1@email.com, admin2@email.com"
               value="${getEmailConfig().adminEmails||''}"
-              style="font-size:12px;padding:7px 10px"/>
+              style="font-size:12px;padding:7px 10px"
+              oninput="autoSaveAdminEmails(this.value)"/>
           </div>
           <button class="btn btn-dark" onclick="saveNotifSettings()" style="font-size:12px;padding:8px">
             💾 Save & Enable Notifications
