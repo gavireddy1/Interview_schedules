@@ -491,6 +491,30 @@ async function submitForm() {
     S.successSlot=S.slots.find(s=>s.ivId===localSlot.ivId&&s.date===localSlot.date&&s.time===localSlot.time)
       ||{...localSlot,...fd,status:'booked'};
     S.activeSlotId=null; S.view='success'; render();
+    // Booking confirmation emails
+    try {
+      const cfg2=getEmailConfig();
+      if(cfg2.serviceId) {
+        const iv2=ivById(localSlot.ivId);
+        sendEmail(fd.email, fd.name,
+          'Interview Confirmed — '+fmtTime(localSlot.time)+' on '+fmtDate(localSlot.date),
+          'Dear '+fd.name+',\n\nYour interview has been confirmed!\n\n'+
+          'Interviewer: '+iv2.full+'\n'+
+          'Date: '+fmtDate(localSlot.date)+'\n'+
+          'Time: '+fmtTime(localSlot.time)+'\n'+
+          'Duration: '+(fd.duration||'30 min')+'\n\n'+
+          'Please be ready 5 minutes early.\n\nBest regards,\nInterview Team');
+        const admins2=cfg2.adminEmails||'';
+        if(admins2) admins2.split(',').forEach(e=>{
+          sendEmail(e.trim(),'Admin',
+            'New Booking: '+fd.name+' at '+fmtTime(localSlot.time)+' on '+fmtDate(localSlot.date),
+            'New interview booked.\n\nCandidate: '+fd.name+'\nEmail: '+fd.email+
+            '\nPhone: '+(fd.phone||'—')+'\nInterviewer: '+iv2.full+
+            '\nDate: '+fmtDate(localSlot.date)+'\nTime: '+fmtTime(localSlot.time)+
+            '\nDuration: '+(fd.duration||'30 min')+'\nPosition: '+(fd.position||'—'));
+        });
+      }
+    } catch(_) {}
     // Send booking confirmation emails
     const cfg2=getEmailConfig();
     if(cfg2.serviceId) {
@@ -621,6 +645,27 @@ async function confirmCancel() {
     S.cancelLog=result.cancelLog;
     closeModal();
     toast('✅ Cancelled. Slot is free for others to book.');
+    // Cancellation emails to candidate + both admins
+    try {
+      const cLog=S.cancelLog[S.cancelLog.length-1];
+      if(cLog) {
+        const cfg3=getEmailConfig(); const iv3=ivById(cLog.ivId);
+        sendEmail(cLog.email, cLog.name,
+          'Interview Cancelled — '+fmtTime(cLog.time)+' on '+fmtDate(cLog.date),
+          'Dear '+cLog.name+',\n\nYour interview at '+fmtTime(cLog.time)+
+          ' on '+fmtDate(cLog.date)+' has been cancelled.\n\n'+
+          'Please contact us to reschedule.\n\nBest regards,\nInterview Team');
+        const admins3=cfg3.adminEmails||'';
+        if(admins3) admins3.split(',').forEach(e=>{
+          sendEmail(e.trim(),'Admin',
+            'Interview Cancelled: '+cLog.name+' — '+fmtTime(cLog.time)+' on '+fmtDate(cLog.date),
+            'Interview cancelled.\n\nCandidate: '+cLog.name+'\nEmail: '+cLog.email+
+            '\nPhone: '+(cLog.phone||'—')+'\nInterviewer: '+iv3.full+
+            '\nDate: '+fmtDate(cLog.date)+'\nTime: '+fmtTime(cLog.time)+
+            '\nCancelled by: '+(cLog.cancelledBy||'Admin'));
+        });
+      }
+    } catch(_) {}
     // Send cancellation email to candidate + both admins
     const cancelledSlot=S.cancelLog[S.cancelLog.length-1];
     if(cancelledSlot) {
