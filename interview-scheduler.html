@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Interview Scheduler</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -95,7 +94,15 @@ input:checked+.sli:before{transform:translateX(20px)}
 </head>
 <body>
 <div class="bg"></div>
-<div class="wrap" id="app"></div>
+<div class="wrap" id="app">
+  <div style="text-align:center;padding:90px 20px">
+    <div style="font-size:34px;margin-bottom:14px">📅</div>
+    <h1 style="font-family:serif;font-size:1.9rem;color:#1a1a2e;margin-bottom:6px">
+      Interview <em style="color:#c8944a;font-style:italic">Scheduler</em>
+    </h1>
+    <div style="font-family:monospace;font-size:12px;color:#aaa;margin-top:14px">Loading…</div>
+  </div>
+</div>
 <div class="toast" id="toast-el"></div>
 
 <div class="modal-bg" id="cancel-modal" style="display:none" onclick="if(event.target===this)closeModal()">
@@ -116,6 +123,8 @@ input:checked+.sli:before{transform:translateX(20px)}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 'use strict';
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -342,6 +351,7 @@ async function boot() {
   // Sync from network in background
   syncInBackground();
   startPoll();
+  startNotifChecker();
 }
 
 async function syncInBackground() {
@@ -481,6 +491,35 @@ async function submitForm() {
     S.successSlot=S.slots.find(s=>s.ivId===localSlot.ivId&&s.date===localSlot.date&&s.time===localSlot.time)
       ||{...localSlot,...fd,status:'booked'};
     S.activeSlotId=null; S.view='success'; render();
+    // Send booking confirmation emails
+    const cfg2=getEmailConfig();
+    if(cfg2.serviceId) {
+      const iv2=ivById(localSlot.ivId);
+      // Email to candidate
+      sendEmail(formData.email, formData.name,
+        'Interview Confirmed — '+fmtTime(localSlot.time)+' on '+fmtDate(localSlot.date),
+        'Dear '+formData.name+',\n\nYour interview has been confirmed!\n\n'+
+        'Interviewer: '+iv2.full+'\n'+
+        'Date: '+fmtDate(localSlot.date)+'\n'+
+        'Time: '+fmtTime(localSlot.time)+'\n'+
+        'Duration: '+(formData.duration||'30 min')+'\n\n'+
+        'Please be ready 5 minutes early.\n\nBest regards,\nInterview Team');
+      // Email to admins
+      const admins=cfg2.adminEmails||'';
+      if(admins) admins.split(',').forEach(e=>{
+        sendEmail(e.trim(),'Admin',
+          'New Booking: '+formData.name+' at '+fmtTime(localSlot.time)+' on '+fmtDate(localSlot.date),
+          'New interview booked.\n\n'+
+          'Candidate: '+formData.name+'\n'+
+          'Email: '+formData.email+'\n'+
+          'Phone: '+(formData.phone||'—')+'\n'+
+          'Interviewer: '+iv2.full+'\n'+
+          'Date: '+fmtDate(localSlot.date)+'\n'+
+          'Time: '+fmtTime(localSlot.time)+'\n'+
+          'Duration: '+(formData.duration||'30 min')+'\n'+
+          'Position: '+(formData.position||'—'));
+      });
+    }
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='Confirm Registration →';}
     if(e.message==='TAKEN'||e.message==='FOLLOW_TAKEN'||e.message==='FOLLOW_DSM')
@@ -582,6 +621,33 @@ async function confirmCancel() {
     S.cancelLog=result.cancelLog;
     closeModal();
     toast('✅ Cancelled. Slot is free for others to book.');
+    // Send cancellation email to candidate + both admins
+    const cancelledSlot=S.cancelLog[S.cancelLog.length-1];
+    if(cancelledSlot) {
+      const cfg3=getEmailConfig();
+      const iv3=ivById(cancelledSlot.ivId);
+      // Email to candidate
+      sendEmail(cancelledSlot.email, cancelledSlot.name,
+        'Interview Cancelled — '+fmtTime(cancelledSlot.time)+' on '+fmtDate(cancelledSlot.date),
+        'Dear '+cancelledSlot.name+',\n\nYour interview scheduled at '+
+        fmtTime(cancelledSlot.time)+' on '+fmtDate(cancelledSlot.date)+
+        ' has been cancelled.\n\nPlease contact us to reschedule.\n\nBest regards,\nInterview Team');
+      // Email to both admins
+      const admins3=cfg3.adminEmails||'';
+      if(admins3) admins3.split(',').forEach(e=>{
+        sendEmail(e.trim(),'Admin',
+          'Interview Cancelled: '+cancelledSlot.name+' — '+fmtTime(cancelledSlot.time)+' on '+fmtDate(cancelledSlot.date),
+          'Interview has been cancelled.\n\n'+
+          'Candidate: '+cancelledSlot.name+'\n'+
+          'Email: '+cancelledSlot.email+'\n'+
+          'Phone: '+(cancelledSlot.phone||'—')+'\n'+
+          'Interviewer: '+iv3.full+'\n'+
+          'Date: '+fmtDate(cancelledSlot.date)+'\n'+
+          'Time: '+fmtTime(cancelledSlot.time)+'\n'+
+          'Duration: '+(cancelledSlot.duration||'30 min')+'\n'+
+          'Cancelled by: '+(cancelledSlot.cancelledBy||'Admin'));
+      });
+    }
     render();
   }catch(e){
     _cancelBusy=false;
@@ -747,6 +813,136 @@ async function cancelMyBooking(slotId) {
     else if(e.message==='NOTBOOKED') toast('Slot is no longer booked.');
     else toast('Cancel failed. Please try again.');
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS — Browser + Email (EmailJS)
+// ═══════════════════════════════════════════════════════════════════════════════
+const NOTIF_KEY = 'iv_notif_sent'; // track which notifications already sent
+let _notifTimer = null;
+
+// EmailJS credentials — pre-configured
+const DEFAULT_EMAIL_CFG = {
+  serviceId:  'service_ereb5g3',
+  templateId: 'template_3842o8c',
+  publicKey:  'urlyILLHaUeQgO35K',
+  adminEmails: '',
+};
+
+function getEmailConfig() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('iv_emailjs')||'{}');
+    return { ...DEFAULT_EMAIL_CFG, ...stored };
+  } catch(_){ return DEFAULT_EMAIL_CFG; }
+}
+function saveEmailConfig(cfg) {
+  localStorage.setItem('iv_emailjs', JSON.stringify({ ...DEFAULT_EMAIL_CFG, ...cfg }));
+}
+
+// Request browser notification permission
+async function requestNotifPermission() {
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') return true;
+  const perm = await Notification.requestPermission();
+  return perm === 'granted';
+}
+
+// Show browser notification
+function showBrowserNotif(title, body) {
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    new Notification(title, { body, icon: '📅', badge: '📅' });
+  } catch(_) {}
+}
+
+// Send email via EmailJS
+async function sendEmail(to, toName, subject, message) {
+  const cfg = getEmailConfig();
+  if(!cfg.serviceId || !cfg.templateId || !cfg.publicKey) return;
+  try {
+    await emailjs.send(cfg.serviceId, cfg.templateId, {
+      to_email: to,
+      to_name: toName,
+      subject: subject,
+      message: message,
+    }, cfg.publicKey);
+  } catch(e) {}
+}
+
+// Check for upcoming interviews and send notifications
+async function checkAndNotify() {
+  if(!S.slots || S.slots.length === 0) return;
+  const now = new Date();
+  const sent = JSON.parse(localStorage.getItem(NOTIF_KEY)||'{}');
+  const booked = S.slots.filter(s => s.status === 'booked' && !s.linkedTo);
+
+  for(const slot of booked) {
+    const [y,m,d] = slot.date.split('-').map(Number);
+    const [h,min] = slot.time.split(':').map(Number);
+    const slotTime = new Date(y, m-1, d, h, min);
+    const diffMs = slotTime - now;
+    const diffMin = Math.round(diffMs / 60000);
+
+    // Send notification 15 minutes before
+    if(diffMin > 0 && diffMin <= 15 && !sent[slot.id]) {
+      sent[slot.id] = Date.now();
+      localStorage.setItem(NOTIF_KEY, JSON.stringify(sent));
+
+      const iv = ivById(slot.ivId);
+      const timeStr = fmtTime(slot.time);
+      const dateStr = fmtDate(slot.date);
+
+      // Browser notification to whoever has the app open
+      showBrowserNotif(
+        '📅 Interview in 15 minutes!',
+        `${slot.name} with ${iv.name} at ${timeStr} on ${dateStr}`
+      );
+
+      // Email to candidate
+      await sendEmail(
+        slot.email,
+        slot.name,
+        `Reminder: Your interview in 15 minutes`,
+        `Dear ${slot.name},\n\nThis is a reminder that your interview is scheduled in 15 minutes.\n\nInterviewer: ${iv.full}\nDate: ${dateStr}\nTime: ${timeStr}\nDuration: ${slot.duration||'30 min'}\n\nPlease be ready!\n\nBest regards,\nInterview Team`
+      );
+
+      // Email to admin (Kondareddy)
+      const adminEmails = getEmailConfig().adminEmails||'';
+      if(adminEmails) {
+        for(const adminEmail of adminEmails.split(',').map(e=>e.trim())) {
+          await sendEmail(
+            adminEmail,
+            'Admin',
+            `Upcoming Interview in 15 mins: ${slot.name}`,
+            `Reminder: ${slot.name} has an interview with ${iv.name} in 15 minutes.\n\nDate: ${dateStr}\nTime: ${timeStr}\nDuration: ${slot.duration||'30 min'}\nPosition: ${slot.position||'—'}\nPhone: ${slot.phone||'—'}`
+          );
+        }
+      }
+    }
+  }
+}
+
+// Start notification checker — runs every minute
+function startNotifChecker() {
+  clearInterval(_notifTimer);
+  _notifTimer = setInterval(checkAndNotify, 60000);
+  checkAndNotify(); // check immediately too
+  requestNotifPermission();
+}
+
+
+function saveNotifSettings() {
+  const cfg = {
+    serviceId: document.getElementById('ejs-service')?.value?.trim()||'',
+    templateId: document.getElementById('ejs-template')?.value?.trim()||'',
+    publicKey: document.getElementById('ejs-pubkey')?.value?.trim()||'',
+    adminEmails: document.getElementById('ejs-admins')?.value?.trim()||'',
+  };
+  saveEmailConfig(cfg);
+  if(cfg.publicKey) emailjs.init(cfg.publicKey);
+  requestNotifPermission();
+  toast('✅ Notification settings saved! Reminders will send 15 min before each interview.');
 }
 
 function goLanding() { S.view='landing'; S.activeSlotId=null; render(); }
@@ -1033,6 +1229,42 @@ function render() {
           </div>
         </div>`:''}
       <!-- Fix Data banner -->
+      <!-- Notification Settings -->
+      <div style="margin-top:16px;background:#eef5ff;border:1.5px solid #90b8f0;
+        border-radius:10px;padding:13px 15px">
+        <div style="font-weight:600;font-size:13px;color:#1a4a90;margin-bottom:10px">
+          🔔 Notification Settings (15 min reminders)
+        </div>
+        <div style="display:grid;gap:8px">
+          <div>
+            <span class="lbl">EmailJS Service ID</span>
+            <input id="ejs-service" placeholder="service_xxxxxxx"
+              value="${getEmailConfig().serviceId||''}"
+              style="font-size:12px;padding:7px 10px"/>
+          </div>
+          <div>
+            <span class="lbl">EmailJS Template ID</span>
+            <input id="ejs-template" placeholder="template_xxxxxxx"
+              value="${getEmailConfig().templateId||''}"
+              style="font-size:12px;padding:7px 10px"/>
+          </div>
+          <div>
+            <span class="lbl">EmailJS Public Key</span>
+            <input id="ejs-pubkey" placeholder="xxxxxxxxxxxxxxx"
+              value="${getEmailConfig().publicKey||''}"
+              style="font-size:12px;padding:7px 10px"/>
+          </div>
+          <div>
+            <span class="lbl">Admin Emails (comma separated)</span>
+            <input id="ejs-admins" placeholder="admin1@email.com, admin2@email.com"
+              value="${getEmailConfig().adminEmails||''}"
+              style="font-size:12px;padding:7px 10px"/>
+          </div>
+          <button class="btn btn-dark" onclick="saveNotifSettings()" style="font-size:12px;padding:8px">
+            💾 Save & Enable Notifications
+          </button>
+        </div>
+      </div>
       <div style="margin-top:16px;background:#fff5f5;border:1.5px solid #f5c0c0;
         border-radius:10px;padding:11px 15px;display:flex;align-items:center;
         justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -1245,7 +1477,24 @@ function render() {
   }
 }
 
-boot();
+// Wait for ALL resources including Supabase SDK to load
+window.addEventListener('load', function() {
+  try {
+    // Init EmailJS with public key
+    if(typeof emailjs !== 'undefined') emailjs.init('urlyILLHaUeQgO35K');
+    boot();
+  } catch(e) {
+    document.getElementById('app').innerHTML = `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:36px;margin-bottom:16px">📅</div>
+        <h2 style="font-family:serif;color:#1a1a2e;margin-bottom:10px">Interview Scheduler</h2>
+        <p style="color:#888;margin-bottom:20px">Loading failed. Please refresh.</p>
+        <button onclick="location.reload()"
+          style="padding:12px 24px;background:#c8944a;color:#fff;border:none;
+          border-radius:9px;font-size:14px;cursor:pointer">↻ Refresh</button>
+      </div>`;
+  }
+});
 </script>
 </body>
 </html>
