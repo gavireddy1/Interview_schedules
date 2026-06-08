@@ -869,9 +869,9 @@ let _notifTimer = null;
 
 // EmailJS credentials — pre-configured
 const DEFAULT_EMAIL_CFG = {
-  serviceId:  'service_ereb5g3',
-  templateId: 'template_3842o8c',
-  publicKey:  'urlyILLHaUeQgO35K',
+  serviceId:  'service_0rvb3xh',
+  templateId: 'template_9e4w3c3',
+  publicKey:  'OVVMotjWlMtyUrkHM',
   adminEmails: '',
 };
 
@@ -1538,7 +1538,7 @@ function render() {
 window.addEventListener('load', function() {
   try {
     // Init EmailJS with public key
-    if(typeof emailjs !== 'undefined') emailjs.init('urlyILLHaUeQgO35K');
+    if(typeof emailjs !== 'undefined') emailjs.init('OVVMotjWlMtyUrkHM');
     boot();
   } catch(e) {
     document.getElementById('app').innerHTML = `
